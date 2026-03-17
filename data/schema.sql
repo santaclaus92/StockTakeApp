@@ -40,3 +40,8 @@ CREATE TABLE IF NOT EXISTS pairs (
 CREATE INDEX IF NOT EXISTS idx_items_session_id ON items(session_id);
 CREATE INDEX IF NOT EXISTS idx_pairs_session_id ON pairs(session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_parent_id ON sessions(parent_id);
+
+-- Disable RLS so the anon key used by the API can read/write freely
+-- (this is a server-side internal tool, not a public-facing app)
+ALTER TABLE sessions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE pairs    DISABLE ROW LEVEL SECURITY;
