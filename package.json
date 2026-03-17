@@ -2,10 +2,15 @@
   "name": "playground",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "api/items.js",
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1"
   },
   "keywords": [],
   "author": "",
