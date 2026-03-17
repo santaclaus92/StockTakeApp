@@ -1024,6 +1024,9 @@
                     <th>Group</th>
                     <th>Batch</th>
                     <th>UoM</th>
+                    <th>Expiry</th>
+                    <th>Category</th>
+                    <th>SAP Status</th>
                     <th id="col-pair" style="display:none;">Assigned to pair</th>
                     <th id="col-src" style="display:none;">Source</th>
                     <th>Status</th>
@@ -1134,7 +1137,7 @@
     function saveEditBin() { var p = pairs.find(function (x) { return x.id === editBinPairId; }); var v = document.getElementById('ebin-sel').value; if (v) p.bin = v; document.getElementById('editbin-wrap').style.display = 'none'; renderPairs(); }
     function closeEditBin() { document.getElementById('editbin-wrap').style.display = 'none'; }
     function pairOpts() { return pairs.map(function (p) { return '<option value="' + p.id + '">' + p.id + ' — ' + p.c + '</option>'; }).join(''); }
-    function renderItems(filter, search) { filter = filter || document.getElementById('item-status-filter').value || 'all'; search = (typeof search === 'string' ? search : '').toLowerCase(); var rc = isRC(); document.getElementById('col-pair').style.display = rc ? '' : 'none'; document.getElementById('col-src').style.display = rc ? '' : 'none'; var tb = document.getElementById('items-tbody'); tb.innerHTML = ''; items.filter(function (i) { var mf = filter === 'all' || (filter === 'active' && !i.dropped) || (filter === 'dropped' && i.dropped); var ms = !search || i.code.toLowerCase().includes(search) || i.name.toLowerCase().includes(search); return mf && ms; }).forEach(function (item) { var tr = document.createElement('tr'); if (item.dropped) tr.style.opacity = '.45'; var pcell = rc ? '<td><select class="select" style="font-size:11px;padding:3px 7px;width:auto;" onchange="changeItemPair(' + item.id + ',this.value)">' + pairOpts().replace('value="' + item.pairId + '"', 'value="' + item.pairId + '" selected') + '</select></td>' : ''; var srcCell = rc ? (item.src ? '<td><span class="badge ' + (item.src === 'new-item' ? 'b-purple' : 'b-warn') + '">' + (item.src === 'new-item' ? 'New item' : 'Variance') + '</span></td>' : '<td style="font-size:11px;color:#aaa;">—</td>') : ''; tr.innerHTML = '<td><input type="checkbox" data-id="' + item.id + '" onchange="updateSel()"/></td><td style="font-family:monospace;font-size:11px;">' + item.code + '</td><td>' + item.name + '</td><td>' + item.grp + '</td><td style="font-size:11px;">' + item.batch + '</td><td>' + item.uom + '</td>' + pcell + srcCell + '<td><span class="badge ' + (item.dropped ? 'is-drop' : 'is-active') + '">' + (item.dropped ? 'Dropped' : 'Active') + '</span></td><td>' + (item.dropped ? '<button class="btn btn-sm rec-btn" onclick="toggleItem(' + item.id + ')">Recover</button>' : '<button class="btn btn-sm drop-btn" onclick="toggleItem(' + item.id + ')">Drop</button>') + '</td>'; tb.appendChild(tr); }); updateSel(); }
+    function renderItems(filter, search) { filter = filter || document.getElementById('item-status-filter').value || 'all'; search = (typeof search === 'string' ? search : '').toLowerCase(); var rc = isRC(); document.getElementById('col-pair').style.display = rc ? '' : 'none'; document.getElementById('col-src').style.display = rc ? '' : 'none'; var tb = document.getElementById('items-tbody'); tb.innerHTML = ''; items.filter(function (i) { var mf = filter === 'all' || (filter === 'active' && !i.dropped) || (filter === 'dropped' && i.dropped); var ms = !search || i.code.toLowerCase().includes(search) || i.name.toLowerCase().includes(search); return mf && ms; }).forEach(function (item) { var tr = document.createElement('tr'); if (item.dropped) tr.style.opacity = '.45'; var pcell = rc ? '<td><select class="select" style="font-size:11px;padding:3px 7px;width:auto;" onchange="changeItemPair(' + item.id + ',this.value)">' + pairOpts().replace('value="' + item.pairId + '"', 'value="' + item.pairId + '" selected') + '</select></td>' : ''; var srcCell = rc ? (item.src ? '<td><span class="badge ' + (item.src === 'new-item' ? 'b-purple' : 'b-warn') + '">' + (item.src === 'new-item' ? 'New item' : 'Variance') + '</span></td>' : '<td style="font-size:11px;color:#aaa;">—</td>') : ''; tr.innerHTML = '<td><input type="checkbox" data-id="' + item.id + '" onchange="updateSel()"/></td><td style="font-family:monospace;font-size:11px;">' + item.code + '</td><td>' + item.name + '</td><td>' + item.grp + '</td><td style="font-size:11px;">' + item.batch + '</td><td>' + item.uom + '</td>' + '<td style="font-size:11px;">' + (item.expiry || '\u2014') + '</td>' + '<td style="font-size:11px;">' + (item.category || '\u2014') + '</td>' + '<td>' + (item.sapStatus ? '<span class="badge ' + (item.sapStatus === 'Not found' ? 'b-danger' : item.sapStatus === 'Variance' ? 'b-warn' : 'b-success') + '">' + item.sapStatus + '</span>' : '<span style="color:#aaa;font-size:11px;">\u2014</span>') + '</td>' + pcell + srcCell + '<td><span class="badge ' + (item.dropped ? 'is-drop' : 'is-active') + '">' + (item.dropped ? 'Dropped' : 'Active') + '</span></td><td>' + (item.dropped ? '<button class="btn btn-sm rec-btn" onclick="toggleItem(' + item.id + ')">Recover</button>' : '<button class="btn btn-sm drop-btn" onclick="toggleItem(' + item.id + ')">Drop</button>') + '</td>'; tb.appendChild(tr); }); updateSel(); }
     function changeItemPair(id, pid) { var i = items.find(function (x) { return x.id === id; }); if (i) { i.pairId = pid; renderPairs(); } }
     function toggleItem(id) { var i = items.find(function (x) { return x.id === id; }); if (i) { i.dropped = !i.dropped; sb.from('items').update({ dropped: i.dropped }).eq('id', id).then(function () { }); } renderItems(); if (openPairId) renderDrawer(); }
     function filterItems(v) { renderItems(document.getElementById('item-status-filter').value, typeof v === 'string' ? v : ''); }
@@ -1159,13 +1162,21 @@
     var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     function mapItem(i) {
+      var expRaw = i.expiry_date || i.expiry || null;
+      var expStr = expRaw ? (typeof expRaw === 'string' ? expRaw.split('T')[0] : String(expRaw)) : null;
       return {
-        id: i.id, code: i.code || '', name: i.name || '', grp: i.grp || i.group || i.category || '',
-        batch: i.batch || '\u2014', uom: i.uom || 'PCS', pairId: i.pair_id || i.pairId || 'P01',
+        id: i.id, code: i.code || '', name: i.name || '', grp: i.grp || i.group || '',
+        batch: i.batch || '\u2014', uom: i.uom || 'PCS', pairId: i.pair_id || i.pairId || null,
         bin: i.bin || '\u2014', dropped: !!(i.dropped || i.is_dropped),
-        sap: +(i.sap || i.sapQty || 0),
-        cnt: (i.cnt !== undefined && i.cnt !== null) ? i.cnt : (i.countQty !== undefined && i.countQty !== null ? i.countQty : null),
-        src: i.src || null
+        sap: +(i.sap || i.sapQty || i.sap_qty || 0),
+        cnt: (i.cnt !== undefined && i.cnt !== null) ? +i.cnt : (i.countQty !== undefined && i.countQty !== null ? +i.countQty : null),
+        src: i.src || null,
+        expiry: expStr,
+        category: i.category || '',
+        sapStatus: i.sap_status || '',
+        cost: +(i.cost || 0),
+        entity: i.entity || '',
+        wh: i.wh_code || ''
       };
     }
 
@@ -1228,16 +1239,37 @@
             var data; try { data = JSON.parse(t); } catch (e) { alert('Flow did not return valid JSON:\n' + t.slice(0, 200)); return; }
             var arr = Array.isArray(data) ? data : (data.items || data.value || []);
             if (!arr.length) { alert('No items returned from SAP.'); return; }
-            items = arr.map(function (i) {
+            var toUpsert = arr.map(function (i) {
               return {
-                id: i.id || i.MaterialNumber || i.code || String(Math.random()),
-                code: i.code || i.MaterialNumber || '', name: i.name || i.Description || '',
-                grp: i.grp || i.MaterialGroup || '', batch: i.batch || i.Batch || '\u2014',
-                uom: i.uom || i.BaseUnit || 'PCS', pairId: 'P01', bin: i.bin || i.StorageLocation || '\u2014',
-                dropped: false, sap: +(i.sap || i.UnrestrictedStock || 0), cnt: null, src: null
+                id: i.ItemInternalId || i.id || ('SAP-' + Math.random().toString(36).slice(2)),
+                code: i.item_code || i.code || '',
+                name: i.item_name || i.name || '',
+                group: i.item_group || i.grp || '',
+                batch: i.batch_serial_num || i.batch || null,
+                uom: i.uom || 'PCS',
+                bin: i.item_location || i.wh_code || i.bin || null,
+                sapQty: +(i.sap_qty !== undefined ? i.sap_qty : (i.sap || 0)),
+                countQty: (i.qty_d2 !== undefined && i.qty_d2 !== null) ? +(i.qty_d2) : null,
+                pairId: null,
+                dropped: false,
+                session_id: curSessId || null,
+                entity: i.entity || null,
+                wh_code: i.wh_code || null,
+                expiry_date: i.expiry_date ? i.expiry_date.split('T')[0] : null,
+                category: i.category || null,
+                new_item: i.new_item || 'No',
+                sap_status: i.status || null,
+                variance: +(i.variance_d2 || 0),
+                cost: +(i.cost || 0),
+                is_delete: !!i.is_delete
               };
             });
-            renderItems(); buildReport();
+            sb.from('items').upsert(toUpsert, { onConflict: 'id' }).then(function (res) {
+              if (res.error) { alert('Failed to save items to Supabase: ' + res.error.message); return; }
+              items = toUpsert.map(mapItem);
+              renderItems(); buildReport();
+              alert('Imported ' + toUpsert.length + ' items from SAP.');
+            });
           });
         })
         .catch(function (e) { alert('Import failed: ' + e.message); })

@@ -41,7 +41,20 @@ CREATE INDEX IF NOT EXISTS idx_items_session_id ON items(session_id);
 CREATE INDEX IF NOT EXISTS idx_pairs_session_id ON pairs(session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_parent_id ON sessions(parent_id);
 
+-- New columns for SAP import data
+ALTER TABLE items ADD COLUMN IF NOT EXISTS entity       TEXT;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS wh_code      TEXT;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS expiry_date  DATE;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS category     TEXT;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS new_item     TEXT    DEFAULT 'No';
+ALTER TABLE items ADD COLUMN IF NOT EXISTS sap_status   TEXT;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS variance     NUMERIC DEFAULT 0;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS cost         NUMERIC DEFAULT 0;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS is_delete    BOOLEAN DEFAULT FALSE;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS dropped      BOOLEAN DEFAULT FALSE;
+
 -- Disable RLS so the anon key used by the API can read/write freely
 -- (this is a server-side internal tool, not a public-facing app)
 ALTER TABLE sessions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE pairs    DISABLE ROW LEVEL SECURITY;
+ALTER TABLE items    DISABLE ROW LEVEL SECURITY;
