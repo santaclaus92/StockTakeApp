@@ -27,10 +27,9 @@ module.exports = async (req, res) => {
           if (!data) return res.status(404).json({ message: `Item ${id} not found` });
           return res.status(200).json(data);
         } else {
-          const { data, error } = await supabase
-            .from('items')
-            .select('*')
-            .order('created_at', { ascending: false });
+          let query = supabase.from('items').select('*').order('created_at', { ascending: false });
+          if (req.query.session_id) query = query.eq('session_id', req.query.session_id);
+          const { data, error } = await query;
           if (error) throw error;
           return res.status(200).json(data);
         }
