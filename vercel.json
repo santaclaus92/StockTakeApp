@@ -1,7 +1,22 @@
 {
-  "rewrites": [
-    { "source": "/api/items/:id", "destination": "/api/items?id=:id" },
-    { "source": "/api/users/:id", "destination": "/api/users?id=:id" },
-    { "source": "/api/bins/:id", "destination": "/api/bins?id=:id" }
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/*.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/api/items/([^/]+)", "dest": "/api/items?id=$1" },
+    { "src": "/api/users/([^/]+)", "dest": "/api/users?id=$1" },
+    { "src": "/api/bins/([^/]+)",  "dest": "/api/bins?id=$1"  },
+    { "src": "/api/items",  "dest": "/api/items"  },
+    { "src": "/api/users",  "dest": "/api/users"  },
+    { "src": "/api/bins",   "dest": "/api/bins"   },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
