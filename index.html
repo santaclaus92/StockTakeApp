@@ -244,7 +244,7 @@ function renderSessTable(){var tb=document.getElementById('sess-tbody');tb.inner
 function openSession(sid){curSessId=sid;var s=cs();document.getElementById('nav-detail').style.display='';document.getElementById('nav-detail-lbl').textContent=s.id;document.getElementById('bc-sep').style.display='';document.getElementById('bc-cur').style.display='';document.getElementById('bc-cur').textContent=s.id;document.getElementById('topbar-right').innerHTML='';goDetail();document.querySelectorAll('.stab').forEach(function(t){t.classList.remove('active');});document.getElementById('stab-pairs').classList.add('active');showTab('pairs',null);renderSessHeader();renderPairBanner();renderPairs();loadItems();renderGallery();var rc=isRC();document.getElementById('pair-form-normal').style.display=rc?'none':'';document.getElementById('pair-form-recount').style.display=rc?'':'none';document.getElementById('col-pair').style.display=rc?'':'none';document.getElementById('col-src').style.display=rc?'':'none';document.getElementById('items-sub').textContent=rc?'"Assigned to pair" is editable for recount sessions.':'Drop items to exclude from this session.';}
 function renderSessHeader(){var s=cs();var rc=isRC();var statusC=s.status==='Active'?'#0d6e4a':s.status==='Closed'?'#666':'#7a3d0a';var rcBadge=rc?'<span class="badge b-purple" style="margin-left:6px;">Recount</span>':'';var linked=!rc?linkedRC(s.id):null;var actionBtns='<button class="btn btn-success btn-sm" onclick="showTab(\'reports\',document.getElementById(\'stab-reports\'));buildReport();">&#8595; Generate report</button>';if(s.status==='Active'){actionBtns+='<button class="btn btn-danger btn-sm" onclick="openEndModal()">&#9632; End session</button>';}var parentLine='';if(rc&&s.parentId){var ps=S.find(function(x){return x.id===s.parentId;});parentLine='<div style="margin-top:10px;" class="banner bn-purple">Recount — linked to parent session: <strong>'+s.parentId+(ps?' &nbsp;'+ps.name:'')+'</strong></div>';}if(linked){parentLine='<div style="margin-top:10px;" class="banner bn-warn">Variance items &amp; new items will be passed to recount session <strong>'+linked.id+' — '+linked.name+'</strong> when ended.</div>';}document.getElementById('sess-hdr').innerHTML='<div class="sess-hdr-top"><div><div style="display:flex;align-items:center;gap:6px;"><div class="sess-title">'+s.name+'</div>'+rcBadge+'</div><div class="sess-id">'+s.id+' · '+s.type+' · '+s.entity+' · '+s.start+' – '+s.end+'</div></div><div class="sess-actions">'+actionBtns+'</div></div><div class="sess-meta-row"><div class="meta-chip"><div class="meta-lbl">Status</div><div class="meta-val" style="color:'+statusC+'">● '+s.status+'</div></div><div class="meta-chip"><div class="meta-lbl">Progress</div><div class="meta-val">'+s.progress+'%</div></div><div class="meta-chip"><div class="meta-lbl">Country</div><div class="meta-val">'+s.country+'</div></div>'+(rc&&s.parentId?'<div class="meta-chip"><div class="meta-lbl">Parent session</div><div class="meta-val" style="color:#1a6bbf;">'+s.parentId+'</div></div>':'')+(linked?'<div class="meta-chip"><div class="meta-lbl">Recount session</div><div class="meta-val" style="color:#1a6bbf;">'+linked.id+'</div></div>':'')+'</div>'+parentLine;}
 function openEndModal(){var s=cs();var rc=isRC();var vItems=varItems();var nItems=approvedNew();var linked=!rc?linkedRC(s.id):null;document.getElementById('em-title').textContent='End session — '+s.id;document.getElementById('em-sub').textContent=rc?'Closing this recount session will lock all counts and mark it as Closed.':'Review the handoff before ending this session.';var bodyHtml='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;"><div class="stat-box"><div class="stat-lbl">Active items</div><div class="stat-val">'+items.filter(function(i){return !i.dropped;}).length+'</div></div><div class="stat-box"><div class="stat-lbl">Variance items</div><div class="stat-val" style="color:#7a3d0a;">'+vItems.length+'</div></div><div class="stat-box"><div class="stat-lbl">New items</div><div class="stat-val" style="color:#1a6bbf;">'+nItems.length+'</div></div></div>';if(!rc){if(linked){bodyHtml+='<div style="font-size:12px;font-weight:500;margin-bottom:8px;">Items to pass → <span style="color:#1a6bbf;">'+linked.id+'</span> as item master</div>';if(vItems.length===0&&nItems.length===0){bodyHtml+='<div class="banner bn-success">No variance or new items — nothing to pass to recount session.</div>';}else{vItems.forEach(function(i){var st=i.cnt===null?'Not found':'Variance';var bc=i.cnt===null?'b-danger':'b-warn';bodyHtml+='<div class="hrow"><span class="hrow-code">'+i.code+'</span><span class="hrow-name">'+i.name+'</span><span class="badge '+bc+'">'+st+'</span></div>';});nItems.forEach(function(n){bodyHtml+='<div class="hrow"><span class="hrow-code">NEW</span><span class="hrow-name">'+n.name+'</span><span class="badge b-purple">New item</span></div>';});}}else{bodyHtml+='<div class="banner bn-info">No linked recount session. Variance &amp; new items will appear in the report only.</div>';}}document.getElementById('em-body').innerHTML=bodyHtml;var footer=document.getElementById('em-footer');footer.innerHTML='';var cb=document.createElement('button');cb.className='btn btn-danger';cb.style.flex='1';cb.textContent=(!rc&&linked)?'End & pass to recount session':'Confirm end session';cb.onclick=function(){doEnd(!rc&&!!linked,linked);};footer.appendChild(cb);var cx=document.createElement('button');cx.className='btn';cx.textContent='Cancel';cx.onclick=function(){document.getElementById('end-modal-wrap').style.display='none';};footer.appendChild(cx);document.getElementById('end-modal-wrap').style.display='';}
-function doEnd(pass,linked){var s=cs();s.status='Closed';s.progress=100;apiPut('/api/sessions/'+s.id,{status:'Closed',progress:100}).catch(function(){});if(pass&&linked){varItems().forEach(function(i){items.push({id:Date.now()+Math.random(),code:i.code,name:i.name,grp:i.grp,batch:i.batch,uom:i.uom,pairId:'P01',bin:i.bin,dropped:false,sap:i.cnt||0,cnt:null,src:'variance'});});approvedNew().forEach(function(n){items.push({id:Date.now()+Math.random(),code:n.code||'NEW',name:n.name,grp:'Unknown',batch:n.batch||'—',uom:'PCS',pairId:'P01',bin:n.bin,dropped:false,sap:n.qty,cnt:null,src:'new-item'});});linked.status='Active';}document.getElementById('end-modal-wrap').style.display='none';renderSessHeader();goSessions();}
+function doEnd(pass,linked){var s=cs();s.status='Closed';s.progress=100;sbFetch('sessions?id=eq.'+s.id,{method:'PATCH',headers:{'Prefer':'return=representation'},body:JSON.stringify({status:'Closed',progress:100})}).catch(function(){});if(pass&&linked){varItems().forEach(function(i){items.push({id:Date.now()+Math.random(),code:i.code,name:i.name,grp:i.grp,batch:i.batch,uom:i.uom,pairId:'P01',bin:i.bin,dropped:false,sap:i.cnt||0,cnt:null,src:'variance'});});approvedNew().forEach(function(n){items.push({id:Date.now()+Math.random(),code:n.code||'NEW',name:n.name,grp:'Unknown',batch:n.batch||'—',uom:'PCS',pairId:'P01',bin:n.bin,dropped:false,sap:n.qty,cnt:null,src:'new-item'});});linked.status='Active';}document.getElementById('end-modal-wrap').style.display='none';renderSessHeader();goSessions();}
 function showTab(name,el){['pairs','items','reports','gallery'].forEach(function(t){document.getElementById('tab-'+t).style.display=t===name?'':'none';});document.querySelectorAll('.stab').forEach(function(t){t.classList.remove('active');});(el||document.getElementById('stab-'+name)).classList.add('active');}
 function validatePairForm(){var ok=document.getElementById('pc').value&&document.getElementById('pk').value;document.getElementById('btn-create-pair-normal').disabled=!ok;}
 function validatePairFormRC(){var ok=document.getElementById('rc-pc').value&&document.getElementById('rc-pk').value;document.getElementById('btn-create-pair-rc').disabled=!ok;}
@@ -264,7 +264,7 @@ function closeEditBin(){document.getElementById('editbin-wrap').style.display='n
 function pairOpts(){return pairs.map(function(p){return '<option value="'+p.id+'">'+p.id+' — '+p.c+'</option>';}).join('');}
 function renderItems(filter,search){filter=filter||document.getElementById('item-status-filter').value||'all';search=(typeof search==='string'?search:'').toLowerCase();var rc=isRC();document.getElementById('col-pair').style.display=rc?'':'none';document.getElementById('col-src').style.display=rc?'':'none';var tb=document.getElementById('items-tbody');tb.innerHTML='';items.filter(function(i){var mf=filter==='all'||(filter==='active'&&!i.dropped)||(filter==='dropped'&&i.dropped);var ms=!search||i.code.toLowerCase().includes(search)||i.name.toLowerCase().includes(search);return mf&&ms;}).forEach(function(item){var tr=document.createElement('tr');if(item.dropped)tr.style.opacity='.45';var pcell=rc?'<td><select class="select" style="font-size:11px;padding:3px 7px;width:auto;" onchange="changeItemPair('+item.id+',this.value)">'+pairOpts().replace('value="'+item.pairId+'"','value="'+item.pairId+'" selected')+'</select></td>':'';var srcCell=rc?(item.src?'<td><span class="badge '+(item.src==='new-item'?'b-purple':'b-warn')+'">'+(item.src==='new-item'?'New item':'Variance')+'</span></td>':'<td style="font-size:11px;color:#aaa;">—</td>'):'';tr.innerHTML='<td><input type="checkbox" data-id="'+item.id+'" onchange="updateSel()"/></td><td style="font-family:monospace;font-size:11px;">'+item.code+'</td><td>'+item.name+'</td><td>'+item.grp+'</td><td style="font-size:11px;">'+item.batch+'</td><td>'+item.uom+'</td>'+pcell+srcCell+'<td><span class="badge '+(item.dropped?'is-drop':'is-active')+'">'+(item.dropped?'Dropped':'Active')+'</span></td><td>'+(item.dropped?'<button class="btn btn-sm rec-btn" onclick="toggleItem('+item.id+')">Recover</button>':'<button class="btn btn-sm drop-btn" onclick="toggleItem('+item.id+')">Drop</button>')+'</td>';tb.appendChild(tr);});updateSel();}
 function changeItemPair(id,pid){var i=items.find(function(x){return x.id===id;});if(i){i.pairId=pid;renderPairs();}}
-function toggleItem(id){var i=items.find(function(x){return x.id===id;});if(i){i.dropped=!i.dropped;apiPut('/api/items/'+id,{dropped:i.dropped}).catch(function(){});}renderItems();if(openPairId)renderDrawer();}
+function toggleItem(id){var i=items.find(function(x){return x.id===id;});if(i){i.dropped=!i.dropped;sbFetch('items?id=eq.'+id,{method:'PATCH',body:JSON.stringify({dropped:i.dropped})}).catch(function(){});}renderItems();if(openPairId)renderDrawer();}
 function filterItems(v){renderItems(document.getElementById('item-status-filter').value,typeof v==='string'?v:'');}
 function updateSel(){selItems.clear();document.querySelectorAll('#items-tbody input[type=checkbox]:checked').forEach(function(cb){selItems.add(+cb.dataset.id);});var bar=document.getElementById('bulk-bar');bar.style.display=selItems.size?'flex':'none';document.getElementById('sel-lbl').textContent=selItems.size+' selected';}
 function toggleAllItems(cb){if(cb.checked)items.forEach(function(i){selItems.add(i.id);});else selItems.clear();renderItems();}
@@ -278,20 +278,31 @@ function onCountry(){var c=document.getElementById('ns-country').value,e=documen
 function onRcToggle(){var ck=document.getElementById('ns-rc').checked;document.getElementById('ns-rc-box').style.display=ck?'':'none';if(ck){var sel=document.getElementById('ns-parent');sel.innerHTML='<option value="">Select parent session…</option>';S.filter(function(s){return !s.rc&&s.status!=='Archived';}).forEach(function(s){sel.innerHTML+='<option value="'+s.id+'">'+s.id+' — '+s.name+'</option>';});}}
 function clearFerr(id){var el=document.getElementById(id);if(el)el.classList.remove('err');var er=document.getElementById(id+'-err');if(er)er.style.display='none';}
 function markFerr(id){var el=document.getElementById(id);if(el)el.classList.add('err');var er=document.getElementById(id+'-err');if(er)er.style.display='';}
-function createSession(){['ns-name','ns-type','ns-country','ns-entity','ns-start','ns-end','ns-parent'].forEach(clearFerr);document.getElementById('ns-gen-err').style.display='none';var n=document.getElementById('ns-name').value.trim(),t=document.getElementById('ns-type').value,co=document.getElementById('ns-country').value,en=document.getElementById('ns-entity').value,st=document.getElementById('ns-start').value,ed=document.getElementById('ns-end').value,rc=document.getElementById('ns-rc').checked,pid=rc?document.getElementById('ns-parent').value:'';var ok=true;if(!n){markFerr('ns-name');ok=false;}if(!t){markFerr('ns-type');ok=false;}if(!co){markFerr('ns-country');ok=false;}if(!en){markFerr('ns-entity');ok=false;}if(!st){markFerr('ns-start');ok=false;}if(!ed){markFerr('ns-end');ok=false;}if(rc&&!pid){markFerr('ns-parent');ok=false;}if(!ok){document.getElementById('ns-gen-err').style.display='';return;}var cc=co==='Malaysia'?'MY':'SG',yr=st.slice(0,4),tc=t==='Year End'?'YE':'CC';var newId=(rc?'RC':tc)+yr+'-'+cc+'-'+(String(S.length+1).padStart(3,'0'));S.push({id:newId,name:n,type:t,entity:en,country:co,start:st,end:ed,status:'Active',progress:0,rc:rc,parentId:rc?pid:null});document.getElementById('ns-form').style.display='none';resetNSForm();renderSessTable();apiFetch('/api/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:newId,name:n,type:t,entity:en,country:co,start_date:st,end_date:ed,status:'Active',progress:0,is_recount:rc,parent_id:rc?pid:null})}).catch(function(e){alert('Session created locally but failed to save to database: '+e.message+'\n\nMake sure the sessions table exists in Supabase (run data/schema.sql).');});}
+function createSession(){['ns-name','ns-type','ns-country','ns-entity','ns-start','ns-end','ns-parent'].forEach(clearFerr);document.getElementById('ns-gen-err').style.display='none';var n=document.getElementById('ns-name').value.trim(),t=document.getElementById('ns-type').value,co=document.getElementById('ns-country').value,en=document.getElementById('ns-entity').value,st=document.getElementById('ns-start').value,ed=document.getElementById('ns-end').value,rc=document.getElementById('ns-rc').checked,pid=rc?document.getElementById('ns-parent').value:'';var ok=true;if(!n){markFerr('ns-name');ok=false;}if(!t){markFerr('ns-type');ok=false;}if(!co){markFerr('ns-country');ok=false;}if(!en){markFerr('ns-entity');ok=false;}if(!st){markFerr('ns-start');ok=false;}if(!ed){markFerr('ns-end');ok=false;}if(rc&&!pid){markFerr('ns-parent');ok=false;}if(!ok){document.getElementById('ns-gen-err').style.display='';return;}var cc=co==='Malaysia'?'MY':'SG',yr=st.slice(0,4),tc=t==='Year End'?'YE':'CC';var newId=(rc?'RC':tc)+yr+'-'+cc+'-'+(String(S.length+1).padStart(3,'0'));S.push({id:newId,name:n,type:t,entity:en,country:co,start:st,end:ed,status:'Active',progress:0,rc:rc,parentId:rc?pid:null});document.getElementById('ns-form').style.display='none';resetNSForm();renderSessTable();sbFetch('sessions',{method:'POST',headers:{'Prefer':'return=representation'},body:JSON.stringify({id:newId,name:n,type:t,entity:en,country:co,start_date:st,end_date:ed,status:'Active',progress:0,is_recount:rc,parent_id:rc?pid:null})}).catch(function(e){alert('Session saved locally but failed to save to Supabase: '+e.message);});}
 function resetNSForm(){['ns-name','ns-start','ns-end'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ns-type').value='';document.getElementById('ns-country').value='';document.getElementById('ns-entity').innerHTML='<option value="">Select…</option>';document.getElementById('ns-rc').checked=false;document.getElementById('ns-rc-box').style.display='none';['ns-name','ns-type','ns-country','ns-entity','ns-start','ns-end','ns-parent'].forEach(clearFerr);document.getElementById('ns-gen-err').style.display='none';}
-// ── API layer ──────────────────────────────────────────────────────────────
-var API_BASE='';
-function apiFetch(path,opts){return fetch(API_BASE+path,opts).then(function(r){return r.text().then(function(text){var body;try{body=JSON.parse(text);}catch(e){throw new Error('HTTP '+r.status+' — response was not JSON:\n'+text.slice(0,200));}if(!r.ok)throw new Error(body.details||body.message||r.status);return body;});});}
-function apiPut(path,body){return apiFetch(path,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}
+// ── Config + Supabase API layer ────────────────────────────────────────────
+var CFG={supabaseUrl:'',supabaseAnonKey:'',powerAutomateUrl:''};
+
+function sbH(){return{'Content-Type':'application/json','apikey':CFG.supabaseAnonKey,'Authorization':'Bearer '+CFG.supabaseAnonKey};}
+function sbFetch(path,opts){
+  opts=opts||{};
+  opts.headers=Object.assign(sbH(),opts.headers||{});
+  return fetch(CFG.supabaseUrl+'/rest/v1/'+path,opts).then(function(r){
+    return r.text().then(function(text){
+      if(!text)return{};
+      var body;try{body=JSON.parse(text);}catch(e){throw new Error('HTTP '+r.status+': '+text.slice(0,200));}
+      if(!r.ok)throw new Error(body.message||body.details||JSON.stringify(body));
+      return body;
+    });
+  });
+}
 
 function loadBins(){
-  apiFetch('/api/bins').then(function(data){
+  sbFetch('bins?order=id.asc').then(function(data){
     if(!data||!data.length)return;
-    var opts=data.map(function(b){return '<option>'+(b.code||b.name||b.id)+'</option>';}).join('');
+    var opts=data.map(function(b){return'<option>'+(b.id||b.code||b.name)+'</option>';}).join('');
     ['#rc-bin','#ebin-sel'].forEach(function(sel){
-      var el=document.querySelector(sel);
-      if(!el)return;
+      var el=document.querySelector(sel);if(!el)return;
       var cur=el.value;
       el.innerHTML='<option value="">Select bin\u2026</option>'+opts;
       if(cur)el.value=cur;
@@ -300,86 +311,78 @@ function loadBins(){
 }
 
 function loadUsers(){
-  apiFetch('/api/users').then(function(data){
+  sbFetch('users?order=name.asc').then(function(data){
     if(!data||!data.length)return;
-    var opts=data.map(function(u){var n=u.name||u.username||u.full_name||String(u.id);return '<option>'+n+'</option>';}).join('');
+    var opts=data.map(function(u){var n=u.name||u.username||String(u.id);return'<option>'+n+'</option>';}).join('');
     ['#pc','#pk','#rc-pc','#rc-pk'].forEach(function(sel){
-      var el=document.querySelector(sel);
-      if(!el)return;
+      var el=document.querySelector(sel);if(!el)return;
       el.innerHTML='<option value="">Select\u2026</option>'+opts;
     });
   }).catch(function(){});
 }
 
 function loadSessions(){
-  apiFetch('/api/sessions').then(function(data){
+  sbFetch('sessions?order=created_at.desc').then(function(data){
     if(!data||!data.length){renderSessTable();return;}
     S=data.map(function(s){
-      return {
-        id:s.id,name:s.name,type:s.type,entity:s.entity,country:s.country,
+      return{id:s.id,name:s.name,type:s.type,entity:s.entity,country:s.country,
         start:s.start_date,end:s.end_date,status:s.status,
-        progress:s.progress||0,rc:!!s.is_recount,parentId:s.parent_id||null
-      };
+        progress:s.progress||0,rc:!!s.is_recount,parentId:s.parent_id||null};
     });
     renderSessTable();
-  }).catch(function(){renderSessTable();});
+  }).catch(function(e){console.error('loadSessions:',e);renderSessTable();});
 }
 
 function loadItems(){
-  var q=curSessId?'?session_id='+encodeURIComponent(curSessId):'';
-  apiFetch('/api/items'+q).then(function(data){
-    if(!data||!data.length){renderItems();buildReport();return;}
-    items=data.map(function(i){
-      return {
-        id:i.id,
-        code:i.code||i.item_code||'',
-        name:i.name||i.item_name||'',
-        grp:i.grp||i.group||i.category||'',
-        batch:i.batch||i.batch_no||'\u2014',
-        uom:i.uom||i.unit||'PCS',
-        pairId:i.pair_id||i.pairId||'P01',
-        bin:i.bin||i.bin_location||'\u2014',
-        dropped:!!(i.dropped||i.is_dropped),
+  var q=curSessId?'items?session_id=eq.'+encodeURIComponent(curSessId)+'&order=created_at.desc':'items?order=created_at.desc';
+  sbFetch(q).then(function(data){
+    items=(data||[]).map(function(i){
+      return{id:i.id,code:i.code||i.item_code||'',name:i.name||i.item_name||'',
+        grp:i.grp||i.group||i.category||'',batch:i.batch||i.batch_no||'\u2014',
+        uom:i.uom||i.unit||'PCS',pairId:i.pair_id||i.pairId||'P01',
+        bin:i.bin||i.bin_location||'\u2014',dropped:!!(i.dropped||i.is_dropped),
         sap:+(i.sap||i.sapQty||i.sap_qty||i.expected_qty||0),
         cnt:(i.cnt!==undefined&&i.cnt!==null)?i.cnt:(i.countQty!==undefined&&i.countQty!==null?i.countQty:null),
-        src:i.src||null
-      };
+        src:i.src||null};
     });
     renderItems();buildReport();
-  }).catch(function(){renderItems();buildReport();});
+  }).catch(function(e){console.error('loadItems:',e);renderItems();buildReport();});
 }
 
 function importFromSAP(){
   var btn=document.getElementById('btn-import-sap');
-  btn.disabled=true;btn.textContent='Importing…';
-  apiFetch('/api/import-sap',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:curSessId})})
-    .then(function(data){
+  if(!CFG.powerAutomateUrl){alert('POWER_AUTOMATE_URL is not configured in Vercel environment variables.');return;}
+  btn.disabled=true;btn.textContent='Importing\u2026';
+  fetch(CFG.powerAutomateUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:curSessId})})
+    .then(function(r){return r.text().then(function(t){
+      if(!t){alert('Flow accepted but returned no data. Add a Response action to your Power Automate flow.');return;}
+      var data;try{data=JSON.parse(t);}catch(e){alert('Flow did not return valid JSON:\n'+t.slice(0,200));return;}
+      if(data.message){alert('SAP: '+data.message);if(!Array.isArray(data)&&!data.items&&!data.value)return;}
       var arr=Array.isArray(data)?data:(data.items||data.value||[]);
-      if(data.message){alert('SAP import: '+data.message);if(!arr.length)return;}
       if(!arr.length){alert('No items returned from SAP.');return;}
       items=arr.map(function(i){
-        return {
-          id:i.id||i.MaterialNumber||i.code||String(Math.random()),
+        return{id:i.id||i.MaterialNumber||i.code||String(Math.random()),
           code:i.code||i.MaterialNumber||i.item_code||'',
           name:i.name||i.Description||i.item_name||'',
           grp:i.grp||i.MaterialGroup||i.category||'',
           batch:i.batch||i.Batch||'\u2014',
           uom:i.uom||i.BaseUnit||i.unit||'PCS',
-          pairId:i.pairId||'P01',
-          bin:i.bin||i.StorageLocation||'\u2014',
-          dropped:false,
-          sap:+(i.sap||i.UnrestrictedStock||i.sap_qty||0),
-          cnt:null,
-          src:null
-        };
+          pairId:i.pairId||'P01',bin:i.bin||i.StorageLocation||'\u2014',
+          dropped:false,sap:+(i.sap||i.UnrestrictedStock||i.sap_qty||0),cnt:null,src:null};
       });
       renderItems();buildReport();
-    })
+    });})
     .catch(function(e){alert('Import failed: '+e.message);})
     .finally(function(){btn.disabled=false;btn.textContent='\u2191 Import from SAP';});
 }
 
-function initFromAPI(){loadBins();loadUsers();loadSessions();}
+function initFromAPI(){
+  fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
+    CFG=cfg;
+    loadBins();loadUsers();loadSessions();
+  }).catch(function(e){console.error('Config load failed:',e);});
+}
+// ──────────────────────────────────────────────────────────────────────────
 // ──────────────────────────────────────────────────────────────────────────
 
 initFromAPI();
