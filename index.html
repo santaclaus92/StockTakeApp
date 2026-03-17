@@ -1,28 +1,344 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StockTake Pro API</title>
-    <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #0f172a; color: white; }
-        .card { background: #1e293b; padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); text-align: center; }
-        h1 { margin-top: 0; color: #38bdf8; }
-        code { background: #334155; padding: 0.2rem 0.5rem; border-radius: 0.25rem; }
-        .status { margin-top: 1rem; font-size: 0.875rem; color: #94a3b8; }
-    </style>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font-sans);}
+.app{display:flex;height:100vh;min-height:720px;background:var(--color-background-tertiary);overflow:hidden;}
+.sidebar{width:196px;min-width:196px;background:var(--color-background-primary);border-right:.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;}
+.logo{padding:14px 16px;border-bottom:.5px solid var(--color-border-tertiary);}
+.logo-t{font-size:13px;font-weight:600;color:var(--color-text-primary);}
+.logo-s{font-size:10px;color:var(--color-text-tertiary);}
+.nav-sec{font-size:10px;font-weight:500;color:var(--color-text-tertiary);padding:10px 16px 3px;text-transform:uppercase;letter-spacing:.06em;}
+.nav-btn{display:flex;align-items:center;gap:7px;padding:7px 16px;cursor:pointer;font-size:12px;color:var(--color-text-secondary);border:none;background:none;width:100%;text-align:left;font-family:sans-serif;}
+.nav-btn:hover{background:#f5f5f5;color:#111;}
+.nav-btn.active{background:#EBF4FF;color:#1a6bbf;font-weight:500;}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{background:#fff;border-bottom:.5px solid #e5e5e5;padding:0 18px;height:46px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.bc{display:flex;align-items:center;gap:5px;font-size:12px;}
+.bc-btn{color:#1a6bbf;cursor:pointer;font-size:12px;background:none;border:none;font-family:sans-serif;padding:0;}
+.bc-btn:hover{text-decoration:underline;}
+.content{flex:1;overflow-y:auto;padding:16px 18px;}
+.page{display:none;}.page.active{display:block;}
+.badge{display:inline-flex;align-items:center;font-size:11px;padding:2px 8px;border-radius:99px;font-weight:500;}
+.b-success{background:#e6f4ee;color:#0d6e4a;}
+.b-warn{background:#fef3e2;color:#7a3d0a;}
+.b-danger{background:#fdeaea;color:#6b1212;}
+.b-info{background:#EBF4FF;color:#1a6bbf;}
+.b-gray{background:#f5f5f5;color:#666;}
+.b-purple{background:#EEEDFE;color:#3C3489;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:6px;font-size:12px;cursor:pointer;border:.5px solid #ddd;background:#fff;color:#111;font-family:sans-serif;white-space:nowrap;}
+.btn:hover:not(:disabled){background:#f5f5f5;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+.btn-primary{background:#EBF4FF;color:#1a6bbf;border-color:transparent;}
+.btn-primary:hover:not(:disabled){opacity:.85;background:#EBF4FF;}
+.btn-success{background:#e6f4ee;color:#0d6e4a;border-color:transparent;}
+.btn-success:hover:not(:disabled){opacity:.85;}
+.btn-danger{background:#fdeaea;color:#6b1212;border-color:transparent;}
+.btn-danger:hover:not(:disabled){opacity:.85;}
+.btn-sm{padding:4px 10px;font-size:11px;}
+.card{background:#fff;border:.5px solid #e5e5e5;border-radius:8px;padding:14px;}
+.input,.select{width:100%;padding:7px 10px;border:.5px solid #ddd;border-radius:6px;font-size:12px;background:#fff;color:#111;font-family:sans-serif;}
+.input:focus,.select:focus{outline:none;border-color:#1a6bbf;}
+.input.err,.select.err{border-color:#D94040;}
+.flbl{font-size:11px;color:#666;margin-bottom:3px;display:block;}
+.flbl.req::after{content:" *";color:#D94040;}
+.ferr{font-size:11px;color:#D94040;margin-top:2px;display:none;}
+.divider{height:.5px;background:#e5e5e5;margin:12px 0;}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{text-align:left;font-weight:500;font-size:11px;color:#666;padding:7px 9px;border-bottom:.5px solid #e5e5e5;}
+.tbl td{padding:8px 9px;border-bottom:.5px solid #e5e5e5;color:#111;vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:#fafafa;}
+.sess-hdr{background:#fff;border:.5px solid #e5e5e5;border-radius:8px;padding:16px 18px;margin-bottom:16px;}
+.sess-hdr-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;}
+.sess-title{font-size:16px;font-weight:600;color:#111;}
+.sess-id{font-size:12px;color:#666;margin-top:2px;}
+.sess-actions{display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.sess-meta-row{display:flex;gap:16px;flex-wrap:wrap;}
+.meta-chip{display:flex;flex-direction:column;gap:1px;}
+.meta-lbl{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.04em;}
+.meta-val{font-size:12px;font-weight:500;color:#111;}
+.stab-bar{display:flex;border-bottom:.5px solid #e5e5e5;margin-bottom:14px;}
+.stab{padding:8px 16px;font-size:12px;cursor:pointer;color:#666;border-bottom:2px solid transparent;margin-bottom:-.5px;background:none;border-top:none;border-left:none;border-right:none;font-family:sans-serif;}
+.stab.active{color:#1a6bbf;border-bottom-color:#1a6bbf;font-weight:500;}
+.pair-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(252px,1fr));gap:12px;}
+.pcard{background:#fff;border:.5px solid #e5e5e5;border-radius:8px;padding:14px;cursor:pointer;}
+.pcard:hover{border-color:#1a6bbf;}
+.pcard.absent-border{border-color:#E8A3A3;}
+.av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;}
+.av-n{background:#E3EFFE;color:#1352A0;}
+.av-a{background:#FDEAEA;border:2px solid #D94040;color:#6B1212;}
+.pname{font-size:12px;font-weight:500;color:#111;}
+.pname.abs{color:#D94040;text-decoration:line-through;}
+.abs-tag{font-size:10px;padding:1px 5px;border-radius:99px;background:#FDEAEA;color:#6B1212;font-weight:500;margin-left:4px;}
+.prog-bar{height:4px;background:#f0f0f0;border-radius:99px;overflow:hidden;flex:1;margin:0 5px;}
+.prog-fill{height:100%;border-radius:99px;background:#378ADD;}
+.drawer{background:#fff;border:.5px solid #e5e5e5;border-radius:8px;margin-top:14px;overflow:hidden;}
+.drawer-hdr{padding:10px 14px;border-bottom:.5px solid #e5e5e5;display:flex;align-items:center;justify-content:space-between;background:#fafafa;}
+.overlay{position:relative;background:rgba(0,0,0,.35);min-height:280px;display:flex;align-items:center;justify-content:center;border-radius:8px;}
+.modal{background:#fff;border:.5px solid #e5e5e5;border-radius:8px;padding:20px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto;}
+.modal-title{font-size:14px;font-weight:600;color:#111;margin-bottom:4px;}
+.modal-sub{font-size:12px;color:#666;margin-bottom:14px;}
+.banner{border-radius:6px;padding:9px 13px;font-size:12px;margin-bottom:12px;}
+.bn-info{background:#EBF4FF;color:#1a6bbf;}
+.bn-warn{background:#fef3e2;color:#7a3d0a;}
+.bn-success{background:#e6f4ee;color:#0d6e4a;}
+.bn-purple{background:#EEEDFE;color:#3C3489;border:.5px solid #C5C0F5;}
+.hrow{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#fafafa;border-radius:6px;margin-bottom:5px;}
+.hrow-code{font-family:monospace;font-size:11px;color:#666;width:88px;flex-shrink:0;}
+.hrow-name{font-size:12px;flex:1;}
+.rc-box{background:#F4F3FE;border:.5px solid #C5C0F5;border-radius:6px;padding:12px;margin-top:8px;}
+.rc-box-title{font-size:12px;font-weight:500;color:#3C3489;margin-bottom:3px;}
+.rc-box-sub{font-size:11px;color:#5E56C0;margin-bottom:9px;}
+.is-active{background:#E1F7EE;color:#085041;}
+.is-drop{background:#FDEAEA;color:#6B1212;}
+.drop-btn{color:#D94040;border-color:#F5BABA;}
+.drop-btn:hover{background:#FDEAEA;}
+.rec-btn{color:#1D9E75;border-color:#9EE3C8;}
+.rec-btn:hover{background:#E3F7EF;}
+.stat-box{background:#f5f5f5;border-radius:6px;padding:12px;}
+.stat-lbl{font-size:11px;color:#666;margin-bottom:3px;}
+.stat-val{font-size:20px;font-weight:600;color:#111;}
+.ck-row{display:flex;align-items:center;gap:8px;padding:7px 0;}
+.ck-row input[type=checkbox]{width:14px;height:14px;accent-color:#378ADD;cursor:pointer;}
+.ck-row label{font-size:12px;color:#111;cursor:pointer;}
+.role-badge{font-size:10px;padding:1px 7px;border-radius:99px;font-weight:500;}
+.role-admin{background:#FDF0E0;color:#7A3D0A;}
+.role-user{background:#E3EFFE;color:#1352A0;}
+</style>
 </head>
 <body>
-    <div class="card">
-        <h1>StockTake Pro API</h1>
-        <p>Your API is successfully deployed to Vercel!</p>
-        <p>Try the endpoints:</p>
-        <ul style="text-align: left; list-style: none; padding: 0;">
-            <li>✅ <code>/api/items</code></li>
-            <li>✅ <code>/api/users</code></li>
-            <li>✅ <code>/api/bins</code></li>
-        </ul>
-        <div class="status">Connected to Supabase</div>
+<div class="app">
+ <div class="sidebar">
+  <div class="logo"><div class="logo-t">StockTake Pro</div><div class="logo-s">Warehouse Management</div></div>
+  <div style="padding:5px 0;">
+   <div class="nav-sec">Admin</div>
+   <button class="nav-btn active" id="nav-sessions" onclick="goSessions()">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/></svg>Sessions
+   </button>
+   <button class="nav-btn" id="nav-detail" style="display:none" onclick="goDetail()">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span id="nav-detail-lbl">Session</span>
+   </button>
+   <div class="nav-sec">Warehouse</div>
+   <button class="nav-btn"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M5 8h6M8 5v6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Scan &amp; Count</button>
+  </div>
+  <div style="margin-top:auto;padding:10px 14px;border-top:.5px solid #e5e5e5;">
+   <div style="display:flex;align-items:center;gap:8px;">
+    <div style="width:26px;height:26px;border-radius:50%;background:#EBF4FF;color:#1a6bbf;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;">AD</div>
+    <div><div style="font-size:11px;font-weight:500;">Admin User</div><div style="font-size:10px;color:#666;">System Admin</div></div>
+   </div>
+  </div>
+ </div>
+ <div class="main">
+  <div class="topbar">
+   <div class="bc"><button class="bc-btn" onclick="goSessions()">Sessions</button><span id="bc-sep" style="display:none;color:#aaa;margin:0 2px;">›</span><span id="bc-cur" style="display:none;font-size:12px;font-weight:500;"></span></div>
+   <div id="topbar-right"></div>
+  </div>
+  <div class="content">
+   <div class="page active" id="page-sessions">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><div style="font-size:15px;font-weight:600;">Sessions</div><button class="btn btn-primary btn-sm" onclick="toggleNSForm()">+ New session</button></div>
+    <div id="ns-form" style="display:none;margin-bottom:14px;">
+     <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;"><span style="font-size:13px;font-weight:500;">New session</span><button class="btn btn-sm" onclick="toggleNSForm()">Cancel</button></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+       <div><label class="flbl req">Session name</label><input class="input" id="ns-name" placeholder="e.g. Year End 2025 Malaysia"/><div class="ferr" id="ns-name-err">Required</div></div>
+       <div><label class="flbl req">Session type</label><select class="select" id="ns-type"><option value="">Select type…</option><option>Year End</option><option>Cycle Count</option></select><div class="ferr" id="ns-type-err">Required</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+       <div><label class="flbl req">Country</label><select class="select" id="ns-country" onchange="onCountry()"><option value="">Select…</option><option>Malaysia</option><option>Singapore</option></select><div class="ferr" id="ns-country-err">Required</div></div>
+       <div><label class="flbl req">Entity</label><select class="select" id="ns-entity"><option value="">Select…</option></select><div class="ferr" id="ns-entity-err">Required</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+       <div><label class="flbl req">Start date</label><input class="input" id="ns-start" type="date"/><div class="ferr" id="ns-start-err">Required</div></div>
+       <div><label class="flbl req">End date</label><input class="input" id="ns-end" type="date"/><div class="ferr" id="ns-end-err">Required</div></div>
+      </div>
+      <div class="divider"></div>
+      <div class="ck-row"><input type="checkbox" id="ns-rc" onchange="onRcToggle()"/><label for="ns-rc">This is a recount session</label></div>
+      <div id="ns-rc-box" style="display:none;">
+       <div class="rc-box"><div class="rc-box-title">Link to parent session</div><div class="rc-box-sub">A recount session must be linked to an existing non-recount session.</div>
+       <label class="flbl req" style="color:#3C3489;">Parent session</label><select class="select" id="ns-parent"><option value="">Select parent session…</option></select><div class="ferr" id="ns-parent-err">Required</div></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:13px;"><button class="btn btn-primary btn-sm" onclick="createSession()">Create session</button><span id="ns-gen-err" style="font-size:11px;color:#D94040;display:none;">Please fill in all required fields.</span></div>
+     </div>
     </div>
+    <div class="card" style="padding:0;overflow:hidden;"><table class="tbl"><thead><tr><th>Session</th><th>Type</th><th>Entity</th><th>Dates</th><th>Status</th><th>Progress</th></tr></thead><tbody id="sess-tbody"></tbody></table></div>
+   </div>
+
+   <div class="page" id="page-detail">
+    <div class="sess-hdr" id="sess-hdr"></div>
+    <div class="stab-bar"><button class="stab active" id="stab-pairs" onclick="showTab('pairs',this)">Pair Assignment</button><button class="stab" id="stab-items" onclick="showTab('items',this)">Item Master</button><button class="stab" id="stab-reports" onclick="showTab('reports',this)">Reports</button><button class="stab" id="stab-gallery" onclick="showTab('gallery',this)">New Item Gallery</button></div>
+
+    <div id="tab-pairs">
+     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><div style="font-size:14px;font-weight:500;">Pair Assignment</div><button class="btn btn-primary btn-sm" onclick="toggleAddPair()">+ Add pair</button></div>
+     <div id="pair-banner" style="display:none;"></div>
+     <div id="add-pair-form" style="display:none;margin-bottom:12px;">
+      <div class="card">
+       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><span style="font-size:13px;font-weight:500;">New pair</span><button class="btn btn-sm" onclick="toggleAddPair()">Cancel</button></div>
+       <div id="pair-form-normal">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+         <div><label class="flbl req">Counter</label><select class="select" id="pc" onchange="validatePairForm()"><option value="">Select…</option><option>Ahmad Hassan</option><option>Jarvis Ng</option><option>Mei Wong</option><option>Halim Basri</option><option>Zack Lim</option></select></div>
+         <div><label class="flbl req">Checker</label><select class="select" id="pk" onchange="validatePairForm()"><option value="">Select…</option><option>Siti Che</option><option>Fatimah K</option><option>Linda Tan</option><option>Priya Nair</option></select></div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="btn-create-pair-normal" onclick="createPair()" disabled>Create pair</button>
+       </div>
+       <div id="pair-form-recount" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+         <div><label class="flbl req">Counter</label><select class="select" id="rc-pc" onchange="validatePairFormRC()"><option value="">Select…</option><option>Ahmad Hassan</option><option>Jarvis Ng</option><option>Mei Wong</option><option>Halim Basri</option><option>Zack Lim</option></select></div>
+         <div><label class="flbl req">Checker</label><select class="select" id="rc-pk" onchange="validatePairFormRC()"><option value="">Select…</option><option>Siti Che</option><option>Fatimah K</option><option>Linda Tan</option><option>Priya Nair</option></select></div>
+         <div><label class="flbl req">Role</label><select class="select" id="rc-role"><option value="User">User</option><option value="Admin">Admin</option></select></div>
+        </div>
+        <div style="margin-bottom:10px;"><label class="flbl req">Bin location</label><select class="select" id="rc-bin"><option value="">Select bin…</option><option>A-01</option><option>A-02</option><option>A-03</option><option>A-04</option><option>A-05</option><option>B-01</option><option>B-02</option><option>B-03</option><option>B-04</option><option>B-05</option><option>C-01</option><option>C-02</option><option>C-03</option><option>C-04</option><option>C-05</option><option>D-01</option><option>D-02</option><option>D-03</option><option>D-04</option><option>D-05</option></select></div>
+        <button class="btn btn-primary btn-sm" id="btn-create-pair-rc" onclick="createPair()" disabled>Create pair</button>
+       </div>
+      </div>
+     </div>
+     <div class="pair-grid" id="pair-grid"></div>
+     <div id="pair-drawer" style="display:none;" class="drawer">
+      <div class="drawer-hdr"><div><span style="font-size:13px;font-weight:500;" id="drw-title"></span><span style="font-size:11px;color:#666;margin-left:8px;" id="drw-sub"></span></div><button class="btn btn-sm" onclick="closeDrawer()">Close</button></div>
+      <div style="padding:7px 12px;border-bottom:.5px solid #e5e5e5;display:flex;gap:8px;"><input class="input" style="max-width:190px;" placeholder="Search…" id="drw-search" oninput="renderDrawer()"/><select class="select" style="width:auto;" id="drw-filter" onchange="renderDrawer()"><option value="all">All</option><option value="active">Active</option><option value="dropped">Dropped</option></select></div>
+      <table class="tbl"><thead><tr><th>Code</th><th>Name</th><th>Group</th><th>Batch</th><th>UoM</th><th>Bin</th><th>Status</th></tr></thead><tbody id="drw-tbody"></tbody></table>
+     </div>
+     <div id="repair-wrap" style="display:none;margin-top:10px;"><div class="overlay"><div class="modal" style="max-width:360px;"><div class="modal-title" id="rep-title"></div><div class="modal-sub" id="rep-sub"></div><div id="rep-list" style="margin-bottom:14px;"></div><div style="display:flex;gap:8px;"><button class="btn btn-primary" style="flex:1;" id="rep-confirm" onclick="confirmRepair()" disabled>Confirm</button><button class="btn" onclick="closeRepair()">Cancel</button></div></div></div></div>
+     <div id="editbin-wrap" style="display:none;margin-top:10px;"><div class="overlay"><div class="modal" style="max-width:340px;"><div class="modal-title" id="ebin-title">Edit bin location</div><div class="modal-sub" id="ebin-sub"></div><div style="margin-bottom:14px;"><label class="flbl">Bin location</label><select class="select" id="ebin-sel"><option value="">Select bin…</option><option>A-01</option><option>A-02</option><option>A-03</option><option>A-04</option><option>A-05</option><option>B-01</option><option>B-02</option><option>B-03</option><option>B-04</option><option>B-05</option><option>C-01</option><option>C-02</option><option>C-03</option><option>C-04</option><option>C-05</option><option>D-01</option><option>D-02</option><option>D-03</option><option>D-04</option><option>D-05</option></select></div><div style="display:flex;gap:8px;"><button class="btn btn-primary" style="flex:1;" onclick="saveEditBin()">Save</button><button class="btn" onclick="closeEditBin()">Cancel</button></div></div></div></div>
+    </div>
+
+    <div id="tab-items" style="display:none;">
+     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div><div style="font-size:14px;font-weight:500;">Item Master</div><div style="font-size:12px;color:#666;" id="items-sub"></div></div><button class="btn btn-primary btn-sm">↑ Import from SAP</button></div>
+     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;"><input class="input" placeholder="Search code or name…" style="flex:1;min-width:150px;" oninput="filterItems(this.value)"/><select class="select" style="width:auto;" id="item-status-filter" onchange="filterItems()"><option value="all">All items</option><option value="active">Active</option><option value="dropped">Dropped</option></select></div>
+     <div class="card" style="padding:0;overflow:hidden;"><table class="tbl"><thead><tr><th style="width:24px;"><input type="checkbox" id="chk-all" onchange="toggleAllItems(this)"/></th><th>Item code</th><th>Item name</th><th>Group</th><th>Batch</th><th>UoM</th><th id="col-pair" style="display:none;">Assigned to pair</th><th id="col-src" style="display:none;">Source</th><th>Status</th><th>Action</th></tr></thead><tbody id="items-tbody"></tbody></table></div>
+     <div id="bulk-bar" style="display:none;gap:8px;align-items:center;margin-top:8px;"><span style="font-size:11px;color:#666;" id="sel-lbl">0 selected</span><button class="btn btn-sm drop-btn" onclick="bulkDrop()">Drop selected</button><button class="btn btn-sm rec-btn" onclick="bulkRecover()">Recover selected</button></div>
+    </div>
+
+    <div id="tab-reports" style="display:none;">
+     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div style="font-size:14px;font-weight:500;">Variance Report</div><button class="btn btn-success btn-sm" onclick="buildReport()">↓ Export Excel</button></div>
+     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;"><div class="stat-box"><div class="stat-lbl">Total items</div><div class="stat-val" id="rpt-total">—</div></div><div class="stat-box"><div class="stat-lbl">Matched</div><div class="stat-val" style="color:#0d6e4a;" id="rpt-matched">—</div></div><div class="stat-box"><div class="stat-lbl">Variance</div><div class="stat-val" style="color:#7a3d0a;" id="rpt-var">—</div></div><div class="stat-box"><div class="stat-lbl">Not found</div><div class="stat-val" style="color:#6b1212;" id="rpt-nf">—</div></div></div>
+     <div class="card" style="padding:0;overflow:hidden;"><table class="tbl"><thead><tr><th>Item code</th><th>Item name</th><th>SAP qty</th><th>Counted qty</th><th>Variance</th><th>Status</th></tr></thead><tbody id="rpt-tbody"></tbody></table></div>
+    </div>
+
+    <div id="tab-gallery" style="display:none;">
+     <div style="font-size:14px;font-weight:500;margin-bottom:4px;">New Item Gallery</div>
+     <div style="font-size:12px;color:#666;margin-bottom:12px;">Items submitted by staff not found in SAP</div>
+     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;" id="gallery-grid"></div>
+    </div>
+
+    <div id="end-modal-wrap" style="display:none;margin-top:10px;"><div class="overlay"><div class="modal"><div class="modal-title" id="em-title">End session</div><div class="modal-sub" id="em-sub"></div><div id="em-body"></div><div style="display:flex;gap:8px;margin-top:16px;" id="em-footer"></div></div></div></div>
+   </div>
+  </div>
+ </div>
+</div>
+<script>
+var S=[{id:'YE2025-MY-001',name:'Year End 2025 Malaysia',type:'Year End',entity:'BMS',country:'Malaysia',start:'2025-12-01',end:'2025-12-05',status:'Active',progress:65,rc:false,parentId:null},{id:'CC2025-SG-002',name:'Cycle Count Q4 SG',type:'Cycle Count',entity:'BMSG',country:'Singapore',start:'2025-11-15',end:'2025-11-16',status:'Active',progress:42,rc:false,parentId:null},{id:'RC2025-MY-003',name:'Recount Batch A',type:'Year End',entity:'BMS',country:'Malaysia',start:'2025-12-06',end:'2025-12-07',status:'Draft',progress:0,rc:true,parentId:'YE2025-MY-001'},{id:'YE2024-MY-010',name:'Year End 2024 Malaysia',type:'Year End',entity:'BMS',country:'Malaysia',start:'2024-12-02',end:'2024-12-04',status:'Closed',progress:100,rc:false,parentId:null}];
+var items=[{id:1,code:'ITM-001234',name:'Hydraulic Pump A200',grp:'Machinery',batch:'BT-2024-001',uom:'PCS',pairId:'P01',bin:'A-07',dropped:false,sap:50,cnt:50,src:null},{id:2,code:'ITM-001235',name:'Conveyor Belt 5m',grp:'Hardware',batch:'—',uom:'MTR',pairId:'P02',bin:'B-04',dropped:false,sap:12,cnt:9,src:null},{id:3,code:'ITM-001236',name:'Safety Helmet XL',grp:'Consumables',batch:'—',uom:'PCS',pairId:'P03',bin:'C-02',dropped:false,sap:200,cnt:213,src:null},{id:4,code:'ITM-001237',name:'Electric Motor 5HP',grp:'Electronics',batch:'SN-EM-8821',uom:'PCS',pairId:'P04',bin:'D-09',dropped:false,sap:8,cnt:null,src:null},{id:5,code:'ITM-001238',name:'Lubricant Oil 20L',grp:'Consumables',batch:'BT-LUB-004',uom:'TIN',pairId:'P01',bin:'A-12',dropped:false,sap:45,cnt:45,src:null},{id:6,code:'ITM-001239',name:'Steel Bracket 200mm',grp:'Hardware',batch:'—',uom:'PCS',pairId:'P02',bin:'B-11',dropped:false,sap:300,cnt:298,src:null},{id:7,code:'ITM-001240',name:'Pressure Gauge 100bar',grp:'Machinery',batch:'BT-PG-009',uom:'PCS',pairId:'P03',bin:'C-06',dropped:false,sap:15,cnt:null,src:null},{id:8,code:'ITM-001241',name:'Sealing Ring 50mm',grp:'Machinery',batch:'—',uom:'PCS',pairId:'P01',bin:'A-03',dropped:false,sap:500,cnt:500,src:null},{id:9,code:'ITM-001242',name:'Drive Shaft 600mm',grp:'Machinery',batch:'SN-DS-441',uom:'PCS',pairId:'P04',bin:'D-15',dropped:false,sap:6,cnt:6,src:null}];
+var newItems=[{id:'N01',name:'Unidentified pump part',code:'',batch:'',qty:3,bin:'A-07',by:'Ahmad Hassan',status:'Pending'},{id:'N02',name:'Small gear assembly',code:'',batch:'',qty:12,bin:'C-03',by:'Jarvis Ng',status:'Pending'},{id:'N03',name:'Chemical container 5L',code:'ITM-TEMP-001',batch:'',qty:6,bin:'D-12',by:'Mei Wong',status:'Approved'}];
+var pairs=[{id:'P01',c:'Ahmad Hassan',ci:'AH',ca:false,k:'Siti Che',ki:'SC',ka:false,bin:'A-07',role:'Admin',prog:78},{id:'P02',c:'Razif Zain',ci:'RZ',ca:true,k:'Linda Tan',ki:'LT',ka:false,bin:'B-04',role:'User',prog:12},{id:'P03',c:'Jarvis Ng',ci:'JN',ca:false,k:'Fatimah K',ki:'FK',ka:false,bin:'C-02',role:'User',prog:55},{id:'P04',c:'Mei Wong',ci:'MW',ca:false,k:'Halim Basri',ki:'HB',ka:false,bin:'D-09',role:'User',prog:91}];
+var selItems=new Set(),openPairId=null,repairPairId=null,repReplName=null,repReplInit=null,editBinPairId=null,nextPair=5,curSessId=null;
+function cs(){return S.find(function(s){return s.id===curSessId;});}
+function isRC(){var s=cs();return s&&s.rc;}
+function varItems(){return items.filter(function(i){return !i.dropped&&(i.cnt===null||i.cnt!==i.sap);});}
+function approvedNew(){return newItems.filter(function(n){return n.status!=='Rejected';});}
+function linkedRC(sid){return S.find(function(s){return s.rc&&s.parentId===sid;});}
+function goSessions(){document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});document.getElementById('page-sessions').classList.add('active');document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});document.getElementById('nav-sessions').classList.add('active');document.getElementById('bc-sep').style.display='none';document.getElementById('bc-cur').style.display='none';document.getElementById('topbar-right').innerHTML='<button class="btn btn-primary btn-sm" onclick="toggleNSForm()">+ New session</button>';renderSessTable();}
+function goDetail(){document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});document.getElementById('page-detail').classList.add('active');document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});document.getElementById('nav-detail').classList.add('active');}
+function renderSessTable(){var tb=document.getElementById('sess-tbody');tb.innerHTML='';S.forEach(function(s){var sc=s.status==='Active'?'b-success':s.status==='Closed'?'b-gray':'b-warn';var rcTag=s.rc?'<span class="badge b-purple" style="margin-left:5px;font-size:10px;">Recount</span>':'';var tr=document.createElement('tr');tr.style.cursor='pointer';tr.onclick=function(){openSession(s.id);};tr.innerHTML='<td><div style="font-size:12px;font-weight:500;color:#1a6bbf;">'+s.id+rcTag+'</div><div style="font-size:11px;color:#666;">'+s.name+'</div></td><td>'+s.type+'</td><td>'+s.entity+'</td><td style="font-size:11px;">'+s.start+' – '+s.end+'</td><td><span class="badge '+sc+'">'+s.status+'</span></td><td><div style="display:flex;align-items:center;gap:4px;"><div class="prog-bar" style="width:60px;margin:0;"><div class="prog-fill" style="width:'+s.progress+'%;'+(s.progress===100?'background:#1D9E75;':'')+'"></div></div><span style="font-size:11px;">'+s.progress+'%</span></div></td>';tb.appendChild(tr);});}
+function openSession(sid){curSessId=sid;var s=cs();document.getElementById('nav-detail').style.display='';document.getElementById('nav-detail-lbl').textContent=s.id;document.getElementById('bc-sep').style.display='';document.getElementById('bc-cur').style.display='';document.getElementById('bc-cur').textContent=s.id;document.getElementById('topbar-right').innerHTML='';goDetail();document.querySelectorAll('.stab').forEach(function(t){t.classList.remove('active');});document.getElementById('stab-pairs').classList.add('active');showTab('pairs',null);renderSessHeader();renderPairBanner();renderPairs();renderItems();buildReport();renderGallery();var rc=isRC();document.getElementById('pair-form-normal').style.display=rc?'none':'';document.getElementById('pair-form-recount').style.display=rc?'':'none';document.getElementById('col-pair').style.display=rc?'':'none';document.getElementById('col-src').style.display=rc?'':'none';document.getElementById('items-sub').textContent=rc?'"Assigned to pair" is editable for recount sessions.':'Drop items to exclude from this session.';}
+function renderSessHeader(){var s=cs();var rc=isRC();var statusC=s.status==='Active'?'#0d6e4a':s.status==='Closed'?'#666':'#7a3d0a';var rcBadge=rc?'<span class="badge b-purple" style="margin-left:6px;">Recount</span>':'';var linked=!rc?linkedRC(s.id):null;var actionBtns='<button class="btn btn-success btn-sm" onclick="showTab(\'reports\',document.getElementById(\'stab-reports\'));buildReport();">&#8595; Generate report</button>';if(s.status==='Active'){actionBtns+='<button class="btn btn-danger btn-sm" onclick="openEndModal()">&#9632; End session</button>';}var parentLine='';if(rc&&s.parentId){var ps=S.find(function(x){return x.id===s.parentId;});parentLine='<div style="margin-top:10px;" class="banner bn-purple">Recount — linked to parent session: <strong>'+s.parentId+(ps?' &nbsp;'+ps.name:'')+'</strong></div>';}if(linked){parentLine='<div style="margin-top:10px;" class="banner bn-warn">Variance items &amp; new items will be passed to recount session <strong>'+linked.id+' — '+linked.name+'</strong> when ended.</div>';}document.getElementById('sess-hdr').innerHTML='<div class="sess-hdr-top"><div><div style="display:flex;align-items:center;gap:6px;"><div class="sess-title">'+s.name+'</div>'+rcBadge+'</div><div class="sess-id">'+s.id+' · '+s.type+' · '+s.entity+' · '+s.start+' – '+s.end+'</div></div><div class="sess-actions">'+actionBtns+'</div></div><div class="sess-meta-row"><div class="meta-chip"><div class="meta-lbl">Status</div><div class="meta-val" style="color:'+statusC+'">● '+s.status+'</div></div><div class="meta-chip"><div class="meta-lbl">Progress</div><div class="meta-val">'+s.progress+'%</div></div><div class="meta-chip"><div class="meta-lbl">Country</div><div class="meta-val">'+s.country+'</div></div>'+(rc&&s.parentId?'<div class="meta-chip"><div class="meta-lbl">Parent session</div><div class="meta-val" style="color:#1a6bbf;">'+s.parentId+'</div></div>':'')+(linked?'<div class="meta-chip"><div class="meta-lbl">Recount session</div><div class="meta-val" style="color:#1a6bbf;">'+linked.id+'</div></div>':'')+'</div>'+parentLine;}
+function openEndModal(){var s=cs();var rc=isRC();var vItems=varItems();var nItems=approvedNew();var linked=!rc?linkedRC(s.id):null;document.getElementById('em-title').textContent='End session — '+s.id;document.getElementById('em-sub').textContent=rc?'Closing this recount session will lock all counts and mark it as Closed.':'Review the handoff before ending this session.';var bodyHtml='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;"><div class="stat-box"><div class="stat-lbl">Active items</div><div class="stat-val">'+items.filter(function(i){return !i.dropped;}).length+'</div></div><div class="stat-box"><div class="stat-lbl">Variance items</div><div class="stat-val" style="color:#7a3d0a;">'+vItems.length+'</div></div><div class="stat-box"><div class="stat-lbl">New items</div><div class="stat-val" style="color:#1a6bbf;">'+nItems.length+'</div></div></div>';if(!rc){if(linked){bodyHtml+='<div style="font-size:12px;font-weight:500;margin-bottom:8px;">Items to pass → <span style="color:#1a6bbf;">'+linked.id+'</span> as item master</div>';if(vItems.length===0&&nItems.length===0){bodyHtml+='<div class="banner bn-success">No variance or new items — nothing to pass to recount session.</div>';}else{vItems.forEach(function(i){var st=i.cnt===null?'Not found':'Variance';var bc=i.cnt===null?'b-danger':'b-warn';bodyHtml+='<div class="hrow"><span class="hrow-code">'+i.code+'</span><span class="hrow-name">'+i.name+'</span><span class="badge '+bc+'">'+st+'</span></div>';});nItems.forEach(function(n){bodyHtml+='<div class="hrow"><span class="hrow-code">NEW</span><span class="hrow-name">'+n.name+'</span><span class="badge b-purple">New item</span></div>';});}}else{bodyHtml+='<div class="banner bn-info">No linked recount session. Variance &amp; new items will appear in the report only.</div>';}}document.getElementById('em-body').innerHTML=bodyHtml;var footer=document.getElementById('em-footer');footer.innerHTML='';var cb=document.createElement('button');cb.className='btn btn-danger';cb.style.flex='1';cb.textContent=(!rc&&linked)?'End & pass to recount session':'Confirm end session';cb.onclick=function(){doEnd(!rc&&!!linked,linked);};footer.appendChild(cb);var cx=document.createElement('button');cx.className='btn';cx.textContent='Cancel';cx.onclick=function(){document.getElementById('end-modal-wrap').style.display='none';};footer.appendChild(cx);document.getElementById('end-modal-wrap').style.display='';}
+function doEnd(pass,linked){var s=cs();s.status='Closed';s.progress=100;if(pass&&linked){varItems().forEach(function(i){items.push({id:Date.now()+Math.random(),code:i.code,name:i.name,grp:i.grp,batch:i.batch,uom:i.uom,pairId:'P01',bin:i.bin,dropped:false,sap:i.cnt||0,cnt:null,src:'variance'});});approvedNew().forEach(function(n){items.push({id:Date.now()+Math.random(),code:n.code||'NEW',name:n.name,grp:'Unknown',batch:n.batch||'—',uom:'PCS',pairId:'P01',bin:n.bin,dropped:false,sap:n.qty,cnt:null,src:'new-item'});});linked.status='Active';}document.getElementById('end-modal-wrap').style.display='none';renderSessHeader();goSessions();}
+function showTab(name,el){['pairs','items','reports','gallery'].forEach(function(t){document.getElementById('tab-'+t).style.display=t===name?'':'none';});document.querySelectorAll('.stab').forEach(function(t){t.classList.remove('active');});(el||document.getElementById('stab-'+name)).classList.add('active');}
+function validatePairForm(){var ok=document.getElementById('pc').value&&document.getElementById('pk').value;document.getElementById('btn-create-pair-normal').disabled=!ok;}
+function validatePairFormRC(){var ok=document.getElementById('rc-pc').value&&document.getElementById('rc-pk').value;document.getElementById('btn-create-pair-rc').disabled=!ok;}
+function renderPairBanner(){var s=cs();var rc=isRC();var b=document.getElementById('pair-banner');if(rc&&s.parentId){var ps=S.find(function(x){return x.id===s.parentId;});b.style.display='';b.className='banner bn-purple';b.innerHTML='Recount — parent: <strong>'+s.parentId+(ps?' — '+ps.name:'')+'</strong>';}else{b.style.display='none';}}
+function toggleAddPair(){var f=document.getElementById('add-pair-form');f.style.display=f.style.display==='none'?'':'none';if(f.style.display==='none'){['pc','pk','rc-pc','rc-pk','rc-bin'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('rc-role').value='User';document.getElementById('btn-create-pair-normal').disabled=true;document.getElementById('btn-create-pair-rc').disabled=true;}}
+function createPair(){var rc=isRC();var ini=function(n){return n.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();};if(rc){var c=document.getElementById('rc-pc').value,k=document.getElementById('rc-pk').value,bin=document.getElementById('rc-bin').value,role=document.getElementById('rc-role').value;if(!c||!k)return;pairs.push({id:'P0'+nextPair,c:c,ci:ini(c),ca:false,k:k,ki:ini(k),ka:false,bin:bin||'—',role:role,prog:0});}else{var c2=document.getElementById('pc').value,k2=document.getElementById('pk').value;if(!c2||!k2)return;pairs.push({id:'P0'+nextPair,c:c2,ci:ini(c2),ca:false,k:k2,ki:ini(k2),ka:false,bin:'—',role:'User',prog:0});}nextPair++;document.getElementById('add-pair-form').style.display='none';renderPairs();}
+function renderPairs(){var grid=document.getElementById('pair-grid');grid.innerHTML='';var rc=isRC();pairs.forEach(function(p){var abs=p.ca||p.ka;var div=document.createElement('div');div.className='pcard'+(abs?' absent-border':'');div.onclick=function(e){if(e.target.tagName==='BUTTON'||e.target.tagName==='SELECT')return;openDrawer(p.id);};var at=function(a){return a?'<span class="abs-tag">Absent</span>':'';};var roleHtml=rc?'<div style="margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span style="font-size:11px;color:#666;">Role:</span><span class="role-badge '+(p.role==='Admin'?'role-admin':'role-user')+'">'+p.role+'</span></div>':'';var binHtml=rc?'<div style="margin-bottom:8px;font-size:11px;"><span style="color:#666;">Bin: </span><span style="font-family:monospace;">'+p.bin+'</span></div>':'';var itemCountHtml=rc?'<span style="font-size:12px;color:#1a6bbf;font-weight:500;">'+items.filter(function(i){return i.pairId===p.id&&!i.dropped;}).length+' items</span>':'';var editBinBtn=rc?'<button class="btn btn-sm" onclick="openEditBin(\''+p.id+'\')">Edit bin</button>':'';div.innerHTML='<div style="font-size:10px;font-weight:500;color:#aaa;text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px;">Pair '+p.id+'</div><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:11px;"><div style="display:flex;align-items:center;gap:8px;"><div class="av '+(p.ca?'av-a':'av-n')+'">'+p.ci+'</div><div><div class="pname'+(p.ca?' abs':'')+'">'+p.c+at(p.ca)+'</div><div style="font-size:11px;color:#666;">Counter</div></div></div><div style="display:flex;align-items:center;gap:8px;"><div class="av '+(p.ka?'av-a':'av-n')+'">'+p.ki+'</div><div><div class="pname'+(p.ka?' abs':'')+'">'+p.k+at(p.ka)+'</div><div style="font-size:11px;color:#666;">Checker</div></div></div></div><div style="border-top:.5px solid #e5e5e5;padding-top:9px;">'+roleHtml+binHtml+'<div style="display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:3px;"><div class="prog-bar"><div class="prog-fill" style="width:'+p.prog+'%;'+(p.prog>85?'background:#1D9E75;':'')+'"></div></div><span style="font-size:11px;color:#666;">'+p.prog+'%</span></div>'+itemCountHtml+'</div><div style="display:flex;gap:5px;margin-top:7px;">'+(abs?'<button class="btn btn-sm btn-primary" onclick="openRepair(\''+p.id+'\')">Repaire</button>':'')+editBinBtn+'</div></div>';grid.appendChild(div);});}
+function openDrawer(pid){openPairId=pid;var p=pairs.find(function(x){return x.id===pid;});document.getElementById('drw-title').textContent='Items — Pair '+pid+' · '+p.c+' / '+p.k;document.getElementById('drw-search').value='';document.getElementById('drw-filter').value='all';renderDrawer();document.getElementById('pair-drawer').style.display='';document.getElementById('pair-drawer').scrollIntoView({behavior:'smooth',block:'nearest'});}
+function closeDrawer(){document.getElementById('pair-drawer').style.display='none';openPairId=null;}
+function renderDrawer(){if(!openPairId)return;var s=document.getElementById('drw-search').value.toLowerCase(),f=document.getElementById('drw-filter').value;var tb=document.getElementById('drw-tbody');tb.innerHTML='';var sub=items.filter(function(i){if(i.pairId!==openPairId)return false;if(f==='active'&&i.dropped)return false;if(f==='dropped'&&!i.dropped)return false;if(s&&!i.code.toLowerCase().includes(s)&&!i.name.toLowerCase().includes(s))return false;return true;});document.getElementById('drw-sub').textContent=sub.length+' item'+(sub.length!==1?'s':'');if(!sub.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:14px;color:#666;">No items</td></tr>';return;}sub.forEach(function(i){var tr=document.createElement('tr');if(i.dropped)tr.style.opacity='.45';tr.innerHTML='<td style="font-family:monospace;font-size:11px;">'+i.code+'</td><td>'+i.name+'</td><td>'+i.grp+'</td><td style="font-size:11px;">'+i.batch+'</td><td>'+i.uom+'</td><td style="font-family:monospace;font-size:11px;">'+i.bin+'</td><td><span class="badge '+(i.dropped?'is-drop':'is-active')+'">'+(i.dropped?'Dropped':'Active')+'</span></td>';tb.appendChild(tr);});}
+function openRepair(pid){repairPairId=pid;repReplName=null;repReplInit=null;var p=pairs.find(function(x){return x.id===pid;});var absPerson=p.ca?p.c:p.k,role=p.ca?'counter':'checker';document.getElementById('rep-title').textContent='Replace '+role+' — Pair '+pid;document.getElementById('rep-sub').textContent=absPerson+' is absent. Select a replacement:';document.getElementById('rep-confirm').disabled=true;var list=document.getElementById('rep-list');list.innerHTML='';[{n:'Halim Basri',i:'HB'},{n:'Zack Lim',i:'ZL'},{n:'Priya Nair',i:'PN'}].forEach(function(u){var d=document.createElement('div');d.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;border:.5px solid transparent;margin-bottom:4px;';d.innerHTML='<div class="av av-n">'+u.i+'</div><div><div style="font-size:12px;font-weight:500;">'+u.n+'</div><div style="font-size:11px;color:#666;">Available</div></div>';d.onclick=function(){document.querySelectorAll('#rep-list > div').forEach(function(x){x.style.borderColor='transparent';x.style.background='';});d.style.borderColor='#378ADD';d.style.background='#E3EFFE';repReplName=u.n;repReplInit=u.i;document.getElementById('rep-confirm').disabled=false;};list.appendChild(d);});document.getElementById('pair-drawer').style.display='none';document.getElementById('repair-wrap').style.display='';}
+function confirmRepair(){var p=pairs.find(function(x){return x.id===repairPairId;});if(p.ca){p.c=repReplName;p.ci=repReplInit;p.ca=false;}else{p.k=repReplName;p.ki=repReplInit;p.ka=false;}document.getElementById('repair-wrap').style.display='none';renderPairs();renderItems();}
+function closeRepair(){document.getElementById('repair-wrap').style.display='none';}
+function openEditBin(pid){editBinPairId=pid;var p=pairs.find(function(x){return x.id===pid;});document.getElementById('ebin-title').textContent='Edit bin — Pair '+pid;document.getElementById('ebin-sub').textContent=p.c+' / '+p.k;document.getElementById('ebin-sel').value=p.bin;document.getElementById('pair-drawer').style.display='none';document.getElementById('editbin-wrap').style.display='';}
+function saveEditBin(){var p=pairs.find(function(x){return x.id===editBinPairId;});var v=document.getElementById('ebin-sel').value;if(v)p.bin=v;document.getElementById('editbin-wrap').style.display='none';renderPairs();}
+function closeEditBin(){document.getElementById('editbin-wrap').style.display='none';}
+function pairOpts(){return pairs.map(function(p){return '<option value="'+p.id+'">'+p.id+' — '+p.c+'</option>';}).join('');}
+function renderItems(filter,search){filter=filter||document.getElementById('item-status-filter').value||'all';search=(typeof search==='string'?search:'').toLowerCase();var rc=isRC();document.getElementById('col-pair').style.display=rc?'':'none';document.getElementById('col-src').style.display=rc?'':'none';var tb=document.getElementById('items-tbody');tb.innerHTML='';items.filter(function(i){var mf=filter==='all'||(filter==='active'&&!i.dropped)||(filter==='dropped'&&i.dropped);var ms=!search||i.code.toLowerCase().includes(search)||i.name.toLowerCase().includes(search);return mf&&ms;}).forEach(function(item){var tr=document.createElement('tr');if(item.dropped)tr.style.opacity='.45';var pcell=rc?'<td><select class="select" style="font-size:11px;padding:3px 7px;width:auto;" onchange="changeItemPair('+item.id+',this.value)">'+pairOpts().replace('value="'+item.pairId+'"','value="'+item.pairId+'" selected')+'</select></td>':'';var srcCell=rc?(item.src?'<td><span class="badge '+(item.src==='new-item'?'b-purple':'b-warn')+'">'+(item.src==='new-item'?'New item':'Variance')+'</span></td>':'<td style="font-size:11px;color:#aaa;">—</td>'):'';tr.innerHTML='<td><input type="checkbox" data-id="'+item.id+'" onchange="updateSel()"/></td><td style="font-family:monospace;font-size:11px;">'+item.code+'</td><td>'+item.name+'</td><td>'+item.grp+'</td><td style="font-size:11px;">'+item.batch+'</td><td>'+item.uom+'</td>'+pcell+srcCell+'<td><span class="badge '+(item.dropped?'is-drop':'is-active')+'">'+(item.dropped?'Dropped':'Active')+'</span></td><td>'+(item.dropped?'<button class="btn btn-sm rec-btn" onclick="toggleItem('+item.id+')">Recover</button>':'<button class="btn btn-sm drop-btn" onclick="toggleItem('+item.id+')">Drop</button>')+'</td>';tb.appendChild(tr);});updateSel();}
+function changeItemPair(id,pid){var i=items.find(function(x){return x.id===id;});if(i){i.pairId=pid;renderPairs();}}
+function toggleItem(id){var i=items.find(function(x){return x.id===id;});if(i){i.dropped=!i.dropped;apiPut('/api/items/'+id,{dropped:i.dropped}).catch(function(){});}renderItems();if(openPairId)renderDrawer();}
+function filterItems(v){renderItems(document.getElementById('item-status-filter').value,typeof v==='string'?v:'');}
+function updateSel(){selItems.clear();document.querySelectorAll('#items-tbody input[type=checkbox]:checked').forEach(function(cb){selItems.add(+cb.dataset.id);});var bar=document.getElementById('bulk-bar');bar.style.display=selItems.size?'flex':'none';document.getElementById('sel-lbl').textContent=selItems.size+' selected';}
+function toggleAllItems(cb){if(cb.checked)items.forEach(function(i){selItems.add(i.id);});else selItems.clear();renderItems();}
+function bulkDrop(){selItems.forEach(function(id){var i=items.find(function(x){return x.id===id;});if(i)i.dropped=true;});selItems.clear();renderItems();}
+function bulkRecover(){selItems.forEach(function(id){var i=items.find(function(x){return x.id===id;});if(i)i.dropped=false;});selItems.clear();renderItems();}
+function buildReport(){var active=items.filter(function(i){return !i.dropped;});var matched=active.filter(function(i){return i.cnt!==null&&i.cnt===i.sap;});var variance=active.filter(function(i){return i.cnt!==null&&i.cnt!==i.sap;});var nf=active.filter(function(i){return i.cnt===null;});document.getElementById('rpt-total').textContent=active.length;document.getElementById('rpt-matched').textContent=matched.length;document.getElementById('rpt-var').textContent=variance.length;document.getElementById('rpt-nf').textContent=nf.length;var tb=document.getElementById('rpt-tbody');tb.innerHTML='';active.forEach(function(item){var v=item.cnt===null?null:item.cnt-item.sap;var st=item.cnt===null?'Not found':v===0?'Matched':'Variance';var bc=st==='Matched'?'b-success':st==='Variance'?'b-warn':'b-danger';var vc=v!==null&&v!==0?'color:#6b1212;':'color:#666;';var tr=document.createElement('tr');tr.innerHTML='<td style="font-family:monospace;font-size:11px;">'+item.code+'</td><td>'+item.name+'</td><td>'+item.sap+'</td><td>'+(item.cnt===null?'—':item.cnt)+'</td><td style="'+vc+'">'+(v===null?'—':(v>0?'+':'')+v)+'</td><td><span class="badge '+bc+'">'+st+'</span></td>';tb.appendChild(tr);});}
+function renderGallery(){var grid=document.getElementById('gallery-grid');grid.innerHTML='';var icons=['&#128230;','&#128295;','&#129524;'];newItems.forEach(function(n,i){var sc=n.status==='Approved'?'b-success':n.status==='Rejected'?'b-danger':'b-warn';var d=document.createElement('div');d.className='card';d.innerHTML='<div style="background:#f5f5f5;border-radius:6px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:10px;">'+icons[i%3]+'</div><div style="font-size:13px;font-weight:500;margin-bottom:3px;">'+n.name+'</div><div style="font-size:11px;color:#666;margin-bottom:6px;">Qty: '+n.qty+' · Bin '+n.bin+' · '+n.by+'</div><div style="margin-bottom:8px;"><span class="badge '+sc+'">'+n.status+'</span></div><div style="display:flex;gap:5px;"><button class="btn btn-sm btn-success" style="flex:1;" onclick="setGalleryStatus(\''+n.id+'\',\'Approved\')">Approve</button><button class="btn btn-sm btn-danger" style="flex:1;" onclick="setGalleryStatus(\''+n.id+'\',\'Rejected\')">Reject</button><button class="btn btn-sm btn-primary">SAP ›</button></div>';grid.appendChild(d);});}
+function setGalleryStatus(id,st){var n=newItems.find(function(x){return x.id===id;});if(n)n.status=st;renderGallery();}
+function toggleNSForm(){var f=document.getElementById('ns-form');f.style.display=f.style.display==='none'?'':'none';if(f.style.display==='none')resetNSForm();}
+function onCountry(){var c=document.getElementById('ns-country').value,e=document.getElementById('ns-entity');e.innerHTML='<option value="">Select…</option>';if(c==='Malaysia')e.innerHTML+='<option>BMS</option><option>BMSD</option>';else if(c==='Singapore')e.innerHTML+='<option>BMSG</option>';}
+function onRcToggle(){var ck=document.getElementById('ns-rc').checked;document.getElementById('ns-rc-box').style.display=ck?'':'none';if(ck){var sel=document.getElementById('ns-parent');sel.innerHTML='<option value="">Select parent session…</option>';S.filter(function(s){return !s.rc&&s.status!=='Archived';}).forEach(function(s){sel.innerHTML+='<option value="'+s.id+'">'+s.id+' — '+s.name+'</option>';});}}
+function clearFerr(id){var el=document.getElementById(id);if(el)el.classList.remove('err');var er=document.getElementById(id+'-err');if(er)er.style.display='none';}
+function markFerr(id){var el=document.getElementById(id);if(el)el.classList.add('err');var er=document.getElementById(id+'-err');if(er)er.style.display='';}
+function createSession(){['ns-name','ns-type','ns-country','ns-entity','ns-start','ns-end','ns-parent'].forEach(clearFerr);document.getElementById('ns-gen-err').style.display='none';var n=document.getElementById('ns-name').value.trim(),t=document.getElementById('ns-type').value,co=document.getElementById('ns-country').value,en=document.getElementById('ns-entity').value,st=document.getElementById('ns-start').value,ed=document.getElementById('ns-end').value,rc=document.getElementById('ns-rc').checked,pid=rc?document.getElementById('ns-parent').value:'';var ok=true;if(!n){markFerr('ns-name');ok=false;}if(!t){markFerr('ns-type');ok=false;}if(!co){markFerr('ns-country');ok=false;}if(!en){markFerr('ns-entity');ok=false;}if(!st){markFerr('ns-start');ok=false;}if(!ed){markFerr('ns-end');ok=false;}if(rc&&!pid){markFerr('ns-parent');ok=false;}if(!ok){document.getElementById('ns-gen-err').style.display='';return;}var cc=co==='Malaysia'?'MY':'SG',yr=st.slice(0,4),tc=t==='Year End'?'YE':'CC';var newId=(rc?'RC':tc)+yr+'-'+cc+'-'+(String(S.length+1).padStart(3,'0'));S.push({id:newId,name:n,type:t,entity:en,country:co,start:st,end:ed,status:'Active',progress:0,rc:rc,parentId:rc?pid:null});document.getElementById('ns-form').style.display='none';resetNSForm();renderSessTable();}
+function resetNSForm(){['ns-name','ns-start','ns-end'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ns-type').value='';document.getElementById('ns-country').value='';document.getElementById('ns-entity').innerHTML='<option value="">Select…</option>';document.getElementById('ns-rc').checked=false;document.getElementById('ns-rc-box').style.display='none';['ns-name','ns-type','ns-country','ns-entity','ns-start','ns-end','ns-parent'].forEach(clearFerr);document.getElementById('ns-gen-err').style.display='none';}
+// ── API layer ──────────────────────────────────────────────────────────────
+var API_BASE='';
+function apiFetch(path,opts){return fetch(API_BASE+path,opts).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
+function apiPut(path,body){return apiFetch(path,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}
+
+function loadBins(){
+  apiFetch('/api/bins').then(function(data){
+    if(!data||!data.length)return;
+    var opts=data.map(function(b){return '<option>'+(b.code||b.name||b.id)+'</option>';}).join('');
+    ['#rc-bin','#ebin-sel'].forEach(function(sel){
+      var el=document.querySelector(sel);
+      if(!el)return;
+      var cur=el.value;
+      el.innerHTML='<option value="">Select bin\u2026</option>'+opts;
+      if(cur)el.value=cur;
+    });
+  }).catch(function(){});
+}
+
+function loadUsers(){
+  apiFetch('/api/users').then(function(data){
+    if(!data||!data.length)return;
+    var opts=data.map(function(u){var n=u.name||u.username||u.full_name||String(u.id);return '<option>'+n+'</option>';}).join('');
+    ['#pc','#pk','#rc-pc','#rc-pk'].forEach(function(sel){
+      var el=document.querySelector(sel);
+      if(!el)return;
+      el.innerHTML='<option value="">Select\u2026</option>'+opts;
+    });
+  }).catch(function(){});
+}
+
+function loadItems(){
+  apiFetch('/api/items').then(function(data){
+    if(!data||!data.length)return;
+    items=data.map(function(i){
+      return {
+        id:i.id,
+        code:i.code||i.item_code||'',
+        name:i.name||i.item_name||'',
+        grp:i.grp||i.group||i.category||'',
+        batch:i.batch||i.batch_no||'\u2014',
+        uom:i.uom||i.unit||'PCS',
+        pairId:i.pair_id||i.pairId||'P01',
+        bin:i.bin||i.bin_location||'\u2014',
+        dropped:!!(i.dropped||i.is_dropped),
+        sap:i.sap||i.sap_qty||i.expected_qty||0,
+        cnt:(i.cnt!==undefined&&i.cnt!==null)?i.cnt:(i.counted_qty!==undefined&&i.counted_qty!==null?i.counted_qty:null),
+        src:i.src||null
+      };
+    });
+    if(curSessId){renderItems();buildReport();}
+  }).catch(function(){});
+}
+
+function initFromAPI(){loadBins();loadUsers();loadItems();}
+// ──────────────────────────────────────────────────────────────────────────
+
+renderSessTable();
+initFromAPI();
+</script>
 </body>
 </html>
