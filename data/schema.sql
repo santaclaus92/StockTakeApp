@@ -41,6 +41,9 @@ CREATE INDEX IF NOT EXISTS idx_items_session_id ON items(session_id);
 CREATE INDEX IF NOT EXISTS idx_pairs_session_id ON pairs(session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_parent_id ON sessions(parent_id);
 
+-- Drop FK on items.bin so SAP location codes (e.g. "HQ") can be stored freely
+ALTER TABLE items DROP CONSTRAINT IF EXISTS items_bin_fkey;
+
 -- New columns for SAP import data
 ALTER TABLE items ADD COLUMN IF NOT EXISTS entity       TEXT;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS wh_code      TEXT;
