@@ -1,26 +1,6 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/*.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "index.html",
-      "use": "@vercel/static"
-    }
-  ],
   "routes": [
-    { "src": "/api/sessions/([^/]+)", "dest": "/api/sessions?id=$1" },
-    { "src": "/api/items/([^/]+)",    "dest": "/api/items?id=$1"    },
-    { "src": "/api/users/([^/]+)",    "dest": "/api/users?id=$1"    },
-    { "src": "/api/bins/([^/]+)",     "dest": "/api/bins?id=$1"     },
-    { "src": "/api/config",     "dest": "/api/config"     },
-    { "src": "/api/sessions",   "dest": "/api/sessions"   },
-    { "src": "/api/items",      "dest": "/api/items"      },
-    { "src": "/api/users",      "dest": "/api/users"      },
-    { "src": "/api/bins",       "dest": "/api/bins"       },
-    { "src": "/api/import-sap", "dest": "/api/import-sap" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
