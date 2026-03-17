@@ -204,7 +204,7 @@ body{font-family:var(--font-sans);}
     </div>
 
     <div id="tab-items" style="display:none;">
-     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div><div style="font-size:14px;font-weight:500;">Item Master</div><div style="font-size:12px;color:#666;" id="items-sub"></div></div><button class="btn btn-primary btn-sm">↑ Import from SAP</button></div>
+     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div><div style="font-size:14px;font-weight:500;">Item Master</div><div style="font-size:12px;color:#666;" id="items-sub"></div></div><button class="btn btn-primary btn-sm" id="btn-import-sap" onclick="importFromSAP()">↑ Import from SAP</button></div>
      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;"><input class="input" placeholder="Search code or name…" style="flex:1;min-width:150px;" oninput="filterItems(this.value)"/><select class="select" style="width:auto;" id="item-status-filter" onchange="filterItems()"><option value="all">All items</option><option value="active">Active</option><option value="dropped">Dropped</option></select></div>
      <div class="card" style="padding:0;overflow:hidden;"><table class="tbl"><thead><tr><th style="width:24px;"><input type="checkbox" id="chk-all" onchange="toggleAllItems(this)"/></th><th>Item code</th><th>Item name</th><th>Group</th><th>Batch</th><th>UoM</th><th id="col-pair" style="display:none;">Assigned to pair</th><th id="col-src" style="display:none;">Source</th><th>Status</th><th>Action</th></tr></thead><tbody id="items-tbody"></tbody></table></div>
      <div id="bulk-bar" style="display:none;gap:8px;align-items:center;margin-top:8px;"><span style="font-size:11px;color:#666;" id="sel-lbl">0 selected</span><button class="btn btn-sm drop-btn" onclick="bulkDrop()">Drop selected</button><button class="btn btn-sm rec-btn" onclick="bulkRecover()">Recover selected</button></div>
@@ -332,6 +332,35 @@ function loadItems(){
     });
     if(curSessId){renderItems();buildReport();}
   }).catch(function(){});
+}
+
+function importFromSAP(){
+  var btn=document.getElementById('btn-import-sap');
+  btn.disabled=true;btn.textContent='Importing…';
+  apiFetch('/api/import-sap',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:curSessId})})
+    .then(function(data){
+      var arr=Array.isArray(data)?data:(data.items||data.value||[]);
+      if(!arr.length){alert('No items returned from SAP.');return;}
+      items=arr.map(function(i){
+        return {
+          id:i.id||i.MaterialNumber||i.code||String(Math.random()),
+          code:i.code||i.MaterialNumber||i.item_code||'',
+          name:i.name||i.Description||i.item_name||'',
+          grp:i.grp||i.MaterialGroup||i.category||'',
+          batch:i.batch||i.Batch||'\u2014',
+          uom:i.uom||i.BaseUnit||i.unit||'PCS',
+          pairId:i.pairId||'P01',
+          bin:i.bin||i.StorageLocation||'\u2014',
+          dropped:false,
+          sap:+(i.sap||i.UnrestrictedStock||i.sap_qty||0),
+          cnt:null,
+          src:null
+        };
+      });
+      renderItems();buildReport();
+    })
+    .catch(function(e){alert('Import failed: '+e.message);})
+    .finally(function(){btn.disabled=false;btn.textContent='\u2191 Import from SAP';});
 }
 
 function initFromAPI(){loadBins();loadUsers();loadItems();}
