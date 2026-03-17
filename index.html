@@ -285,9 +285,11 @@ var CFG={supabaseUrl:'',supabaseAnonKey:'',powerAutomateUrl:''};
 
 function sbH(){return{'Content-Type':'application/json','apikey':CFG.supabaseAnonKey,'Authorization':'Bearer '+CFG.supabaseAnonKey};}
 function sbFetch(path,opts){
+  if(!CFG.supabaseUrl)return Promise.reject(new Error('Supabase URL not loaded yet. Check SUPABASE_URL is set in Vercel environment variables and /api/config is accessible.'));
   opts=opts||{};
   opts.headers=Object.assign(sbH(),opts.headers||{});
-  return fetch(CFG.supabaseUrl+'/rest/v1/'+path,opts).then(function(r){
+  var url=CFG.supabaseUrl.replace(/\/$/,'')+'/rest/v1/'+path;
+  return fetch(url,opts).then(function(r){
     return r.text().then(function(text){
       if(!text)return{};
       var body;try{body=JSON.parse(text);}catch(e){throw new Error('HTTP '+r.status+': '+text.slice(0,200));}
@@ -377,10 +379,17 @@ function importFromSAP(){
 }
 
 function initFromAPI(){
-  fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
+  fetch('/api/config').then(function(r){
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return r.json();
+  }).then(function(cfg){
+    if(!cfg.supabaseUrl||!cfg.supabaseAnonKey){
+      alert('Missing Supabase config. Make sure SUPABASE_URL and SUPABASE_ANON_KEY are set in Vercel environment variables.');
+      return;
+    }
     CFG=cfg;
     loadBins();loadUsers();loadSessions();
-  }).catch(function(e){console.error('Config load failed:',e);});
+  }).catch(function(e){alert('Failed to load app config from /api/config: '+e.message);});
 }
 // ──────────────────────────────────────────────────────────────────────────
 // ──────────────────────────────────────────────────────────────────────────
