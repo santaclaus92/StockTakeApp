@@ -56,6 +56,20 @@ ALTER TABLE items ADD COLUMN IF NOT EXISTS cost         NUMERIC DEFAULT 0;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS is_delete    BOOLEAN DEFAULT FALSE;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS dropped      BOOLEAN DEFAULT FALSE;
 
+-- Additional columns for users imported from Azure AD via Power Automate
+ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name   TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email          TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS department     TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name   TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title      TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS country        TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS account_enabled BOOLEAN DEFAULT TRUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS initials       TEXT;
+
+-- Allow decimal quantities (SAP quantities can be fractional)
+ALTER TABLE items ALTER COLUMN sap_qty   TYPE NUMERIC USING sap_qty::NUMERIC;
+ALTER TABLE items ALTER COLUMN count_qty TYPE NUMERIC USING count_qty::NUMERIC;
+
 -- Disable RLS so the anon key used by the API can read/write freely
 -- (this is a server-side internal tool, not a public-facing app)
 ALTER TABLE sessions DISABLE ROW LEVEL SECURITY;

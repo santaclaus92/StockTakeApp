@@ -835,8 +835,11 @@
 
           <div id="tab-pairs">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-              <div style="font-size:14px;font-weight:500;">Pair Assignment</div><button class="btn btn-primary btn-sm"
-                onclick="toggleAddPair()">+ Add pair</button>
+              <div style="font-size:14px;font-weight:500;">Pair Assignment</div>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-sm" id="btn-import-users" onclick="importUsers()">&#8593; Import users</button>
+                <button class="btn btn-primary btn-sm" onclick="toggleAddPair()">+ Add pair</button>
+              </div>
             </div>
             <div id="pair-banner" style="display:none;"></div>
             <div id="add-pair-form" style="display:none;margin-bottom:12px;">
@@ -849,19 +852,10 @@
                     <div><label class="flbl req">Counter</label><select class="select" id="pc"
                         onchange="validatePairForm()">
                         <option value="">Select…</option>
-                        <option>Ahmad Hassan</option>
-                        <option>Jarvis Ng</option>
-                        <option>Mei Wong</option>
-                        <option>Halim Basri</option>
-                        <option>Zack Lim</option>
                       </select></div>
                     <div><label class="flbl req">Checker</label><select class="select" id="pk"
                         onchange="validatePairForm()">
                         <option value="">Select…</option>
-                        <option>Siti Che</option>
-                        <option>Fatimah K</option>
-                        <option>Linda Tan</option>
-                        <option>Priya Nair</option>
                       </select></div>
                   </div>
                   <button class="btn btn-primary btn-sm" id="btn-create-pair-normal" onclick="createPair()"
@@ -872,19 +866,10 @@
                     <div><label class="flbl req">Counter</label><select class="select" id="rc-pc"
                         onchange="validatePairFormRC()">
                         <option value="">Select…</option>
-                        <option>Ahmad Hassan</option>
-                        <option>Jarvis Ng</option>
-                        <option>Mei Wong</option>
-                        <option>Halim Basri</option>
-                        <option>Zack Lim</option>
                       </select></div>
                     <div><label class="flbl req">Checker</label><select class="select" id="rc-pk"
                         onchange="validatePairFormRC()">
                         <option value="">Select…</option>
-                        <option>Siti Che</option>
-                        <option>Fatimah K</option>
-                        <option>Linda Tan</option>
-                        <option>Priya Nair</option>
                       </select></div>
                     <div><label class="flbl req">Role</label><select class="select" id="rc-role">
                         <option value="User">User</option>
@@ -1130,18 +1115,18 @@
     function openDrawer(pid) { openPairId = pid; var p = pairs.find(function (x) { return x.id === pid; }); document.getElementById('drw-title').textContent = 'Items — Pair ' + pid + ' · ' + p.c + ' / ' + p.k; document.getElementById('drw-search').value = ''; document.getElementById('drw-filter').value = 'all'; renderDrawer(); document.getElementById('pair-drawer').style.display = ''; document.getElementById('pair-drawer').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
     function closeDrawer() { document.getElementById('pair-drawer').style.display = 'none'; openPairId = null; }
     function renderDrawer() { if (!openPairId) return; var s = document.getElementById('drw-search').value.toLowerCase(), f = document.getElementById('drw-filter').value; var tb = document.getElementById('drw-tbody'); tb.innerHTML = ''; var sub = items.filter(function (i) { if (i.pairId !== openPairId) return false; if (f === 'active' && i.dropped) return false; if (f === 'dropped' && !i.dropped) return false; if (s && !i.code.toLowerCase().includes(s) && !i.name.toLowerCase().includes(s)) return false; return true; }); document.getElementById('drw-sub').textContent = sub.length + ' item' + (sub.length !== 1 ? 's' : ''); if (!sub.length) { tb.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:14px;color:#666;">No items</td></tr>'; return; } sub.forEach(function (i) { var tr = document.createElement('tr'); if (i.dropped) tr.style.opacity = '.45'; tr.innerHTML = '<td style="font-family:monospace;font-size:11px;">' + i.code + '</td><td>' + i.name + '</td><td>' + i.grp + '</td><td style="font-size:11px;">' + i.batch + '</td><td>' + i.uom + '</td><td style="font-family:monospace;font-size:11px;">' + i.bin + '</td><td><span class="badge ' + (i.dropped ? 'is-drop' : 'is-active') + '">' + (i.dropped ? 'Dropped' : 'Active') + '</span></td>'; tb.appendChild(tr); }); }
-    function openRepair(pid) { repairPairId = pid; repReplName = null; repReplInit = null; var p = pairs.find(function (x) { return x.id === pid; }); var absPerson = p.ca ? p.c : p.k, role = p.ca ? 'counter' : 'checker'; document.getElementById('rep-title').textContent = 'Replace ' + role + ' — Pair ' + pid; document.getElementById('rep-sub').textContent = absPerson + ' is absent. Select a replacement:'; document.getElementById('rep-confirm').disabled = true; var list = document.getElementById('rep-list'); list.innerHTML = '';[{ n: 'Halim Basri', i: 'HB' }, { n: 'Zack Lim', i: 'ZL' }, { n: 'Priya Nair', i: 'PN' }].forEach(function (u) { var d = document.createElement('div'); d.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;border:.5px solid transparent;margin-bottom:4px;'; d.innerHTML = '<div class="av av-n">' + u.i + '</div><div><div style="font-size:12px;font-weight:500;">' + u.n + '</div><div style="font-size:11px;color:#666;">Available</div></div>'; d.onclick = function () { document.querySelectorAll('#rep-list > div').forEach(function (x) { x.style.borderColor = 'transparent'; x.style.background = ''; }); d.style.borderColor = '#378ADD'; d.style.background = '#E3EFFE'; repReplName = u.n; repReplInit = u.i; document.getElementById('rep-confirm').disabled = false; }; list.appendChild(d); }); document.getElementById('pair-drawer').style.display = 'none'; document.getElementById('repair-wrap').style.display = ''; }
+    function openRepair(pid) { repairPairId = pid; repReplName = null; repReplInit = null; var p = pairs.find(function (x) { return x.id === pid; }); var absPerson = p.ca ? p.c : p.k, role = p.ca ? 'counter' : 'checker'; document.getElementById('rep-title').textContent = 'Replace ' + role + ' — Pair ' + pid; document.getElementById('rep-sub').textContent = absPerson + ' is absent. Select a replacement:'; document.getElementById('rep-confirm').disabled = true; var list = document.getElementById('rep-list'); list.innerHTML = ''; var repUsers = usersList.filter(function (u) { return u.name !== absPerson; }); if (!repUsers.length) { list.innerHTML = '<div style="font-size:12px;color:#666;padding:8px;">No users available. Import users first.</div>'; } repUsers.forEach(function (u) { var d = document.createElement('div'); d.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;border:.5px solid transparent;margin-bottom:4px;'; d.innerHTML = '<div class="av av-n">' + u.initials + '</div><div><div style="font-size:12px;font-weight:500;">' + u.name + '</div><div style="font-size:11px;color:#666;">Available</div></div>'; d.onclick = function () { document.querySelectorAll('#rep-list > div').forEach(function (x) { x.style.borderColor = 'transparent'; x.style.background = ''; }); d.style.borderColor = '#378ADD'; d.style.background = '#E3EFFE'; repReplName = u.name; repReplInit = u.initials; document.getElementById('rep-confirm').disabled = false; }; list.appendChild(d); }); document.getElementById('pair-drawer').style.display = 'none'; document.getElementById('repair-wrap').style.display = ''; }
     function confirmRepair() { var p = pairs.find(function (x) { return x.id === repairPairId; }); if (p.ca) { p.c = repReplName; p.ci = repReplInit; p.ca = false; } else { p.k = repReplName; p.ki = repReplInit; p.ka = false; } document.getElementById('repair-wrap').style.display = 'none'; renderPairs(); renderItems(); }
     function closeRepair() { document.getElementById('repair-wrap').style.display = 'none'; }
     function openEditBin(pid) { editBinPairId = pid; var p = pairs.find(function (x) { return x.id === pid; }); document.getElementById('ebin-title').textContent = 'Edit bin — Pair ' + pid; document.getElementById('ebin-sub').textContent = p.c + ' / ' + p.k; document.getElementById('ebin-sel').value = p.bin; document.getElementById('pair-drawer').style.display = 'none'; document.getElementById('editbin-wrap').style.display = ''; }
     function saveEditBin() { var p = pairs.find(function (x) { return x.id === editBinPairId; }); var v = document.getElementById('ebin-sel').value; if (v) p.bin = v; document.getElementById('editbin-wrap').style.display = 'none'; renderPairs(); }
     function closeEditBin() { document.getElementById('editbin-wrap').style.display = 'none'; }
     function pairOpts() { return pairs.map(function (p) { return '<option value="' + p.id + '">' + p.id + ' — ' + p.c + '</option>'; }).join(''); }
-    function renderItems(filter, search) { filter = filter || document.getElementById('item-status-filter').value || 'all'; search = (typeof search === 'string' ? search : '').toLowerCase(); var rc = isRC(); document.getElementById('col-pair').style.display = rc ? '' : 'none'; document.getElementById('col-src').style.display = rc ? '' : 'none'; var tb = document.getElementById('items-tbody'); tb.innerHTML = ''; items.filter(function (i) { var mf = filter === 'all' || (filter === 'active' && !i.dropped) || (filter === 'dropped' && i.dropped); var ms = !search || i.code.toLowerCase().includes(search) || i.name.toLowerCase().includes(search); return mf && ms; }).forEach(function (item) { var tr = document.createElement('tr'); if (item.dropped) tr.style.opacity = '.45'; var pcell = rc ? '<td><select class="select" style="font-size:11px;padding:3px 7px;width:auto;" onchange="changeItemPair(' + item.id + ',this.value)">' + pairOpts().replace('value="' + item.pairId + '"', 'value="' + item.pairId + '" selected') + '</select></td>' : ''; var srcCell = rc ? (item.src ? '<td><span class="badge ' + (item.src === 'new-item' ? 'b-purple' : 'b-warn') + '">' + (item.src === 'new-item' ? 'New item' : 'Variance') + '</span></td>' : '<td style="font-size:11px;color:#aaa;">—</td>') : ''; tr.innerHTML = '<td><input type="checkbox" data-id="' + item.id + '" onchange="updateSel()"/></td><td style="font-family:monospace;font-size:11px;">' + item.code + '</td><td>' + item.name + '</td><td>' + item.grp + '</td><td style="font-size:11px;">' + item.batch + '</td><td>' + item.uom + '</td>' + '<td style="font-size:11px;">' + (item.expiry || '\u2014') + '</td>' + '<td style="font-size:11px;">' + (item.category || '\u2014') + '</td>' + '<td>' + (item.sapStatus ? '<span class="badge ' + (item.sapStatus === 'Not found' ? 'b-danger' : item.sapStatus === 'Variance' ? 'b-warn' : 'b-success') + '">' + item.sapStatus + '</span>' : '<span style="color:#aaa;font-size:11px;">\u2014</span>') + '</td>' + pcell + srcCell + '<td><span class="badge ' + (item.dropped ? 'is-drop' : 'is-active') + '">' + (item.dropped ? 'Dropped' : 'Active') + '</span></td><td>' + (item.dropped ? '<button class="btn btn-sm rec-btn" onclick="toggleItem(' + item.id + ')">Recover</button>' : '<button class="btn btn-sm drop-btn" onclick="toggleItem(' + item.id + ')">Drop</button>') + '</td>'; tb.appendChild(tr); }); updateSel(); }
+    function renderItems(filter, search) { filter = filter || document.getElementById('item-status-filter').value || 'all'; search = (typeof search === 'string' ? search : '').toLowerCase(); var rc = isRC(); document.getElementById('col-pair').style.display = rc ? '' : 'none'; document.getElementById('col-src').style.display = rc ? '' : 'none'; var tb = document.getElementById('items-tbody'); tb.innerHTML = ''; items.filter(function (i) { var mf = filter === 'all' || (filter === 'active' && !i.dropped) || (filter === 'dropped' && i.dropped); var ms = !search || i.code.toLowerCase().includes(search) || i.name.toLowerCase().includes(search); return mf && ms; }).forEach(function (item) { var tr = document.createElement('tr'); if (item.dropped) tr.style.opacity = '.45'; var pcell = rc ? '<td><select class="select" style="font-size:11px;padding:3px 7px;width:auto;" onchange="changeItemPair(\'' + item.id + '\',this.value)">' + pairOpts().replace('value="' + item.pairId + '"', 'value="' + item.pairId + '" selected') + '</select></td>' : ''; var srcCell = rc ? (item.src ? '<td><span class="badge ' + (item.src === 'new-item' ? 'b-purple' : 'b-warn') + '">' + (item.src === 'new-item' ? 'New item' : 'Variance') + '</span></td>' : '<td style="font-size:11px;color:#aaa;">—</td>') : ''; tr.innerHTML = '<td><input type="checkbox" data-id="' + item.id + '" onchange="updateSel()"/></td><td style="font-family:monospace;font-size:11px;">' + item.code + '</td><td>' + item.name + '</td><td>' + item.grp + '</td><td style="font-size:11px;">' + item.batch + '</td><td>' + item.uom + '</td>' + '<td style="font-size:11px;">' + (item.expiry || '\u2014') + '</td>' + '<td style="font-size:11px;">' + (item.category || '\u2014') + '</td>' + '<td>' + (item.sapStatus ? '<span class="badge ' + (item.sapStatus === 'Not found' ? 'b-danger' : item.sapStatus === 'Variance' ? 'b-warn' : 'b-success') + '">' + item.sapStatus + '</span>' : '<span style="color:#aaa;font-size:11px;">\u2014</span>') + '</td>' + pcell + srcCell + '<td><span class="badge ' + (item.dropped ? 'is-drop' : 'is-active') + '">' + (item.dropped ? 'Dropped' : 'Active') + '</span></td><td>' + (item.dropped ? '<button class="btn btn-sm rec-btn" onclick="toggleItem(\'' + item.id + '\')">Recover</button>' : '<button class="btn btn-sm drop-btn" onclick="toggleItem(\'' + item.id + '\')">Drop</button>') + '</td>'; tb.appendChild(tr); }); updateSel(); }
     function changeItemPair(id, pid) { var i = items.find(function (x) { return x.id === id; }); if (i) { i.pairId = pid; renderPairs(); } }
     function toggleItem(id) { var i = items.find(function (x) { return x.id === id; }); if (i) { i.dropped = !i.dropped; sb.from('items').update({ dropped: i.dropped }).eq('id', id).then(function () { }); } renderItems(); if (openPairId) renderDrawer(); }
     function filterItems(v) { renderItems(document.getElementById('item-status-filter').value, typeof v === 'string' ? v : ''); }
-    function updateSel() { selItems.clear(); document.querySelectorAll('#items-tbody input[type=checkbox]:checked').forEach(function (cb) { selItems.add(+cb.dataset.id); }); var bar = document.getElementById('bulk-bar'); bar.style.display = selItems.size ? 'flex' : 'none'; document.getElementById('sel-lbl').textContent = selItems.size + ' selected'; }
+    function updateSel() { selItems.clear(); document.querySelectorAll('#items-tbody input[type=checkbox]:checked').forEach(function (cb) { selItems.add(cb.dataset.id); }); var bar = document.getElementById('bulk-bar'); bar.style.display = selItems.size ? 'flex' : 'none'; document.getElementById('sel-lbl').textContent = selItems.size + ' selected'; }
     function toggleAllItems(cb) { if (cb.checked) items.forEach(function (i) { selItems.add(i.id); }); else selItems.clear(); renderItems(); }
     function bulkDrop() { selItems.forEach(function (id) { var i = items.find(function (x) { return x.id === id; }); if (i) i.dropped = true; }); selItems.clear(); renderItems(); }
     function bulkRecover() { selItems.forEach(function (id) { var i = items.find(function (x) { return x.id === id; }); if (i) i.dropped = false; }); selItems.clear(); renderItems(); }
@@ -1159,7 +1144,9 @@
     var SUPABASE_URL = 'https://lyouqmjrzvcdevglunyc.supabase.co';
     var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5b3VxbWpyenZjZGV2Z2x1bnljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3MjQ1OTYsImV4cCI6MjA4OTMwMDU5Nn0.xeR8GbU6NnP3-7GZENOLlWQi7uNvEYLUzeiwwhh1V34';
     var POWER_AUTOMATE_URL = 'https://defaulteda15da7404e41e9bb346a26118bd3.a3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/2c3b0061a1af4e0b94612035b68abefb/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=HU4RJaS8-FkopQ5CbzGwFwIGjYvddS-WuNusGaiwOtc';
+    var POWER_AUTOMATE_USERS_URL = 'https://defaulteda15da7404e41e9bb346a26118bd3.a3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1f27adcb562444e9b231a290f1ccd3ae/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=9pmYm1C2vco8xpHfXwxl752h1x2AP5bURkbSwbDBMwk';
     var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    var usersList = [];
 
     function mapItem(i) {
       var expRaw = i.expiry_date || i.expiry || null;
@@ -1217,15 +1204,67 @@
       });
     }
 
+    function populateUserDropdowns() {
+      var opts = usersList.map(function (u) { return '<option>' + u.name + '</option>'; }).join('');
+      ['#pc', '#pk', '#rc-pc', '#rc-pk'].forEach(function (sel) {
+        var el = document.querySelector(sel); if (!el) return;
+        el.innerHTML = '<option value="">Select\u2026</option>' + opts;
+      });
+    }
+
     function loadUsers() {
       sb.from('users').select('*').order('name', { ascending: true }).then(function (res) {
         if (res.error || !res.data || !res.data.length) return;
-        var opts = res.data.map(function (u) { return '<option>' + (u.name || u.username || String(u.id)) + '</option>'; }).join('');
-        ['#pc', '#pk', '#rc-pc', '#rc-pk'].forEach(function (sel) {
-          var el = document.querySelector(sel); if (!el) return;
-          el.innerHTML = '<option value="">Select\u2026</option>' + opts;
+        usersList = res.data.map(function (u) {
+          var n = u.name || u.display_name || String(u.id);
+          var ini = u.initials || n.split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+          return { id: u.id, name: n, initials: ini };
         });
+        populateUserDropdowns();
       });
+    }
+
+    function importUsers() {
+      var btn = document.getElementById('btn-import-users');
+      if (!POWER_AUTOMATE_USERS_URL || POWER_AUTOMATE_USERS_URL === 'YOUR_POWER_AUTOMATE_USERS_URL') { alert('Set POWER_AUTOMATE_USERS_URL in index.html'); return; }
+      btn.disabled = true; btn.textContent = 'Importing\u2026';
+      fetch(POWER_AUTOMATE_USERS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: curSessId }) })
+        .then(function (r) {
+          return r.text().then(function (t) {
+            if (!t) { alert('Flow returned no data.'); return; }
+            var data; try { data = JSON.parse(t); } catch (e) { alert('Flow did not return valid JSON:\n' + t.slice(0, 200)); return; }
+            var arr = Array.isArray(data) ? data : (data.users || data.value || []);
+            if (!arr.length) { alert('No users returned.'); return; }
+            var toInsert = arr.map(function (u) {
+              var ini = ((u.given_name || '')[0] || '') + ((u.surname || '')[0] || '');
+              return {
+                id: u.id,
+                name: u.display_name || u.full_name || ((u.given_name || '') + ' ' + (u.surname || '')).trim(),
+                display_name: u.display_name || null,
+                email: u.email_address || null,
+                department: u.department || null,
+                company_name: u.company_name || null,
+                job_title: u.job_title || null,
+                country: u.country || null,
+                account_enabled: typeof u.account_enabled === 'boolean' ? u.account_enabled : true,
+                initials: ini.toUpperCase() || null
+              };
+            });
+            sb.from('users').delete().neq('id', '').then(function (delRes) {
+              if (delRes.error) { alert('Failed to clear existing users: ' + delRes.error.message); return; }
+              sb.from('users').insert(toInsert).then(function (res) {
+                if (res.error) { alert('Failed to save users: ' + res.error.message); return; }
+                usersList = toInsert.map(function (u) {
+                  return { id: u.id, name: u.name, initials: u.initials || u.name.slice(0, 2).toUpperCase() };
+                });
+                populateUserDropdowns();
+                alert('Imported ' + toInsert.length + ' users.');
+              });
+            });
+          });
+        })
+        .catch(function (e) { alert('Import users failed: ' + e.message); })
+        .finally(function () { btn.disabled = false; btn.textContent = '\u2191 Import users'; });
     }
 
     function importFromSAP() {
@@ -1264,11 +1303,14 @@
                 is_delete: !!i.is_delete
               };
             });
-            sb.from('items').upsert(toUpsert, { onConflict: 'id' }).then(function (res) {
-              if (res.error) { alert('Failed to save items to Supabase: ' + res.error.message); return; }
-              items = toUpsert.map(mapItem);
-              renderItems(); buildReport();
-              alert('Imported ' + toUpsert.length + ' items from SAP.');
+            sb.from('items').delete().eq('session_id', curSessId).then(function (delRes) {
+              if (delRes.error) { alert('Failed to clear existing items: ' + delRes.error.message); return; }
+              sb.from('items').insert(toUpsert).then(function (res) {
+                if (res.error) { alert('Failed to save items to Supabase: ' + res.error.message); return; }
+                items = toUpsert.map(mapItem);
+                renderItems(); buildReport();
+                alert('Imported ' + toUpsert.length + ' items from SAP.');
+              });
             });
           });
         })
