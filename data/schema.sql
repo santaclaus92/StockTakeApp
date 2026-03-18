@@ -44,6 +44,9 @@ CREATE INDEX IF NOT EXISTS idx_sessions_parent_id ON sessions(parent_id);
 -- Drop FK on items.bin so SAP location codes (e.g. "HQ") can be stored freely
 ALTER TABLE items DROP CONSTRAINT IF EXISTS items_bin_fkey;
 
+-- Drop FK on pairs.bin_id so any bin value can be stored freely
+ALTER TABLE pairs DROP CONSTRAINT IF EXISTS pairs_bin_id_fkey;
+
 -- New columns for SAP import data
 ALTER TABLE items ADD COLUMN IF NOT EXISTS entity       TEXT;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS wh_code      TEXT;
@@ -55,6 +58,16 @@ ALTER TABLE items ADD COLUMN IF NOT EXISTS variance     NUMERIC DEFAULT 0;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS cost         NUMERIC DEFAULT 0;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS is_delete    BOOLEAN DEFAULT FALSE;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS dropped      BOOLEAN DEFAULT FALSE;
+
+-- Attendance tracking per session
+CREATE TABLE IF NOT EXISTS session_attendees (
+  session_id  TEXT     NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  user_id     TEXT     NOT NULL,
+  user_name   TEXT     NOT NULL,
+  attended    BOOLEAN  NOT NULL DEFAULT TRUE,
+  PRIMARY KEY (session_id, user_id)
+);
+ALTER TABLE session_attendees DISABLE ROW LEVEL SECURITY;
 
 -- Additional columns for users imported from Azure AD via Power Automate
 ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name   TEXT;

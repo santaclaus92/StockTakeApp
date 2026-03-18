@@ -2,211 +2,196 @@
 <html>
 
 <head>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    :root {
+      --primary:       #1b3764;
+      --primary-dark:  #14294f;
+      --primary-mid:   #2a5298;
+      --accent:        #73caf1;
+      --accent-light:  #e8f6fd;
+      --bg:            #f0f4f8;
+      --bg-card:       #ffffff;
+      --border:        #e2e8f0;
+      --text:          #1a202c;
+      --text-2:        #4a5568;
+      --text-3:        #718096;
+      --font-sans:     'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --color-background-tertiary: #f0f4f8;
+      --color-background-primary:  #1b3764;
+      --color-border-tertiary:     rgba(115,202,241,0.15);
+      --color-text-primary:        #ffffff;
+      --color-text-secondary:      rgba(255,255,255,0.65);
+      --color-text-tertiary:       rgba(115,202,241,0.5);
     }
 
-    body {
-      font-family: var(--font-sans);
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    body { font-family: var(--font-sans); color: var(--text); }
+
+    /* ── App shell ── */
     .app {
       display: flex;
       height: 100vh;
       min-height: 720px;
-      background: var(--color-background-tertiary);
+      background: var(--bg);
       overflow: hidden;
     }
 
+    /* ── Sidebar ── */
     .sidebar {
-      width: 196px;
-      min-width: 196px;
-      background: var(--color-background-primary);
-      border-right: .5px solid var(--color-border-tertiary);
+      width: 200px;
+      min-width: 200px;
+      background: linear-gradient(180deg, #1b3764 0%, #14294f 100%);
+      border-right: none;
       display: flex;
       flex-direction: column;
+      box-shadow: 3px 0 16px rgba(27,55,100,0.22);
+      z-index: 10;
     }
 
     .logo {
-      padding: 14px 16px;
-      border-bottom: .5px solid var(--color-border-tertiary);
+      padding: 16px 16px 14px;
+      border-bottom: 1px solid rgba(115,202,241,0.15);
     }
 
     .logo-t {
       font-size: 13px;
-      font-weight: 600;
-      color: var(--color-text-primary);
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.02em;
     }
 
     .logo-s {
       font-size: 10px;
-      color: var(--color-text-tertiary);
+      color: rgba(115,202,241,0.7);
+      margin-top: 2px;
     }
 
     .nav-sec {
       font-size: 10px;
-      font-weight: 500;
-      color: var(--color-text-tertiary);
-      padding: 10px 16px 3px;
+      font-weight: 600;
+      color: rgba(115,202,241,0.5);
+      padding: 12px 16px 4px;
       text-transform: uppercase;
-      letter-spacing: .06em;
+      letter-spacing: .08em;
     }
 
     .nav-btn {
       display: flex;
       align-items: center;
-      gap: 7px;
-      padding: 7px 16px;
+      gap: 8px;
+      padding: 8px 16px;
       cursor: pointer;
       font-size: 12px;
-      color: var(--color-text-secondary);
+      color: rgba(255,255,255,0.6);
       border: none;
+      border-left: 3px solid transparent;
       background: none;
       width: 100%;
       text-align: left;
-      font-family: sans-serif;
+      font-family: var(--font-sans);
+      font-weight: 500;
+      transition: background 0.15s, color 0.15s;
     }
 
     .nav-btn:hover {
-      background: #f5f5f5;
-      color: #111;
+      background: rgba(115,202,241,0.12);
+      color: #ffffff;
     }
 
     .nav-btn.active {
-      background: #EBF4FF;
-      color: #1a6bbf;
-      font-weight: 500;
+      background: rgba(115,202,241,0.18);
+      color: #73caf1;
+      font-weight: 600;
+      border-left-color: #73caf1;
     }
 
-    .main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+    /* ── Main ── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
     .topbar {
-      background: #fff;
-      border-bottom: .5px solid #e5e5e5;
-      padding: 0 18px;
-      height: 46px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 48px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       flex-shrink: 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
 
-    .bc {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
-    }
+    .bc { display: flex; align-items: center; gap: 6px; font-size: 12px; }
 
     .bc-btn {
-      color: #1a6bbf;
+      color: var(--primary);
       cursor: pointer;
       font-size: 12px;
       background: none;
       border: none;
-      font-family: sans-serif;
+      font-family: var(--font-sans);
+      font-weight: 600;
       padding: 0;
     }
 
-    .bc-btn:hover {
-      text-decoration: underline;
-    }
+    .bc-btn:hover { text-decoration: underline; }
 
-    .content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px 18px;
-    }
+    .content { flex: 1; overflow-y: auto; padding: 18px 20px; }
 
-    .page {
-      display: none;
-    }
+    .page { display: none; }
+    .page.active { display: block; }
 
-    .page.active {
-      display: block;
-    }
-
+    /* ── Badges ── */
     .badge {
       display: inline-flex;
       align-items: center;
       font-size: 11px;
       padding: 2px 8px;
       border-radius: 99px;
-      font-weight: 500;
+      font-weight: 600;
     }
 
-    .b-success {
-      background: #e6f4ee;
-      color: #0d6e4a;
-    }
+    .b-success { background: #e6f4ee; color: #0d6e4a; }
+    .b-warn    { background: #fef3e2; color: #7a3d0a; }
+    .b-danger  { background: #fdeaea; color: #6b1212; }
+    .b-info    { background: var(--accent-light); color: var(--primary); }
+    .b-gray    { background: #f1f5f9; color: #4a5568; }
+    .b-purple  { background: #EEEDFE; color: #3C3489; }
 
-    .b-warn {
-      background: #fef3e2;
-      color: #7a3d0a;
-    }
-
-    .b-danger {
-      background: #fdeaea;
-      color: #6b1212;
-    }
-
-    .b-info {
-      background: #EBF4FF;
-      color: #1a6bbf;
-    }
-
-    .b-gray {
-      background: #f5f5f5;
-      color: #666;
-    }
-
-    .b-purple {
-      background: #EEEDFE;
-      color: #3C3489;
-    }
-
+    /* ── Buttons ── */
     .btn {
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      padding: 6px 13px;
-      border-radius: 6px;
+      padding: 6px 14px;
+      border-radius: 7px;
       font-size: 12px;
       cursor: pointer;
-      border: .5px solid #ddd;
-      background: #fff;
-      color: #111;
-      font-family: sans-serif;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-weight: 500;
       white-space: nowrap;
+      transition: all 0.15s;
     }
 
-    .btn:hover:not(:disabled) {
-      background: #f5f5f5;
-    }
-
-    .btn:disabled {
-      opacity: .45;
-      cursor: not-allowed;
-    }
+    .btn:hover:not(:disabled) { background: #f8fafc; border-color: #c8d8e8; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
 
     .btn-primary {
-      background: #EBF4FF;
-      color: #1a6bbf;
+      background: linear-gradient(135deg, #1b3764 0%, #2a5298 100%);
+      color: #ffffff;
       border-color: transparent;
+      box-shadow: 0 2px 6px rgba(27,55,100,0.28);
     }
 
     .btn-primary:hover:not(:disabled) {
-      opacity: .85;
-      background: #EBF4FF;
+      background: linear-gradient(135deg, #14294f 0%, #1b3764 100%);
+      box-shadow: 0 3px 10px rgba(27,55,100,0.35);
     }
 
     .btn-success {
@@ -215,116 +200,88 @@
       border-color: transparent;
     }
 
-    .btn-success:hover:not(:disabled) {
-      opacity: .85;
-    }
+    .btn-success:hover:not(:disabled) { background: #d4eddf; }
 
     .btn-danger {
-      background: #fdeaea;
-      color: #6b1212;
+      background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+      color: #ffffff;
       border-color: transparent;
+      box-shadow: 0 2px 6px rgba(192,57,43,0.25);
     }
 
-    .btn-danger:hover:not(:disabled) {
-      opacity: .85;
-    }
+    .btn-danger:hover:not(:disabled) { opacity: .9; }
 
-    .btn-sm {
-      padding: 4px 10px;
-      font-size: 11px;
-    }
+    .btn-sm { padding: 4px 11px; font-size: 11px; }
 
+    /* ── Card ── */
     .card {
-      background: #fff;
-      border: .5px solid #e5e5e5;
-      border-radius: 8px;
-      padding: 14px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
     }
 
-    .input,
-    .select {
+    /* ── Form elements ── */
+    .input, .select {
       width: 100%;
-      padding: 7px 10px;
-      border: .5px solid #ddd;
-      border-radius: 6px;
+      padding: 7px 11px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
       font-size: 12px;
-      background: #fff;
-      color: #111;
-      font-family: sans-serif;
+      background: #ffffff;
+      color: var(--text);
+      font-family: var(--font-sans);
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
 
-    .input:focus,
-    .select:focus {
+    .input:focus, .select:focus {
       outline: none;
-      border-color: #1a6bbf;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(27,55,100,0.1);
     }
 
-    .input.err,
-    .select.err {
-      border-color: #D94040;
-    }
+    .input.err, .select.err { border-color: #e53e3e; }
 
-    .flbl {
-      font-size: 11px;
-      color: #666;
-      margin-bottom: 3px;
-      display: block;
-    }
+    .flbl { font-size: 11px; color: var(--text-2); margin-bottom: 3px; display: block; font-weight: 500; }
+    .flbl.req::after { content: " *"; color: #e53e3e; }
+    .ferr { font-size: 11px; color: #e53e3e; margin-top: 2px; display: none; }
 
-    .flbl.req::after {
-      content: " *";
-      color: #D94040;
-    }
+    .divider { height: 1px; background: var(--border); margin: 12px 0; }
 
-    .ferr {
-      font-size: 11px;
-      color: #D94040;
-      margin-top: 2px;
-      display: none;
-    }
-
-    .divider {
-      height: .5px;
-      background: #e5e5e5;
-      margin: 12px 0;
-    }
-
-    .tbl {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
+    /* ── Table ── */
+    .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
 
     .tbl th {
       text-align: left;
-      font-weight: 500;
+      font-weight: 600;
       font-size: 11px;
-      color: #666;
-      padding: 7px 9px;
-      border-bottom: .5px solid #e5e5e5;
+      color: var(--primary);
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
 
     .tbl td {
-      padding: 8px 9px;
-      border-bottom: .5px solid #e5e5e5;
-      color: #111;
+      padding: 9px 10px;
+      border-bottom: 1px solid #f1f5f9;
+      color: var(--text);
       vertical-align: middle;
     }
 
-    .tbl tr:last-child td {
-      border-bottom: none;
-    }
+    .tbl tr:last-child td { border-bottom: none; }
+    .tbl tr:hover td { background: #f8fafb; }
 
-    .tbl tr:hover td {
-      background: #fafafa;
-    }
-
+    /* ── Session header ── */
     .sess-hdr {
-      background: #fff;
-      border: .5px solid #e5e5e5;
-      border-radius: 8px;
-      padding: 16px 18px;
+      background: linear-gradient(135deg, #1b3764 0%, #2a5298 60%, #3b6cb7 100%);
+      border: none;
+      border-radius: 12px;
+      padding: 18px 20px;
       margin-bottom: 16px;
+      box-shadow: 0 4px 20px rgba(27,55,100,0.28);
     }
 
     .sess-hdr-top {
@@ -332,365 +289,343 @@
       align-items: flex-start;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 12px;
-    }
-
-    .sess-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #111;
-    }
-
-    .sess-id {
-      font-size: 12px;
-      color: #666;
-      margin-top: 2px;
-    }
-
-    .sess-actions {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-shrink: 0;
-    }
-
-    .sess-meta-row {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    .meta-chip {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-    }
-
-    .meta-lbl {
-      font-size: 10px;
-      color: #aaa;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-    }
-
-    .meta-val {
-      font-size: 12px;
-      font-weight: 500;
-      color: #111;
-    }
-
-    .stab-bar {
-      display: flex;
-      border-bottom: .5px solid #e5e5e5;
       margin-bottom: 14px;
     }
 
+    .sess-title { font-size: 17px; font-weight: 700; color: #ffffff; }
+    .sess-id    { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 3px; }
+    .sess-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    .sess-meta-row { display: flex; gap: 20px; flex-wrap: wrap; }
+
+    .meta-chip { display: flex; flex-direction: column; gap: 2px; }
+    .meta-lbl  { font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: .05em; }
+    .meta-val  { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.92); }
+
+    /* Buttons inside the dark session header */
+    .sess-hdr .btn {
+      background: rgba(255,255,255,0.13);
+      border-color: rgba(255,255,255,0.25);
+      color: #ffffff;
+    }
+
+    .sess-hdr .btn:hover:not(:disabled) {
+      background: rgba(255,255,255,0.22);
+      border-color: rgba(255,255,255,0.4);
+    }
+
+    .sess-hdr .btn-danger {
+      background: rgba(231,76,60,0.85);
+      border-color: transparent;
+      box-shadow: 0 2px 6px rgba(192,57,43,0.3);
+    }
+
+    .sess-hdr .btn-success {
+      background: rgba(13,110,74,0.85);
+      border-color: transparent;
+    }
+
+    /* ── Sub-tab bar ── */
+    .stab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+      background: #ffffff;
+      border-radius: 10px 10px 0 0;
+      padding: 0 4px;
+    }
+
     .stab {
-      padding: 8px 16px;
+      padding: 10px 16px;
       font-size: 12px;
       cursor: pointer;
-      color: #666;
+      color: var(--text-3);
       border-bottom: 2px solid transparent;
-      margin-bottom: -.5px;
+      margin-bottom: -1px;
       background: none;
       border-top: none;
       border-left: none;
       border-right: none;
-      font-family: sans-serif;
+      font-family: var(--font-sans);
+      font-weight: 500;
+      transition: color 0.15s;
     }
+
+    .stab:hover { color: var(--primary); }
 
     .stab.active {
-      color: #1a6bbf;
-      border-bottom-color: #1a6bbf;
-      font-weight: 500;
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      font-weight: 600;
     }
 
+    /* ── Pair grid ── */
     .pair-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(252px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
       gap: 12px;
     }
 
     .pcard {
-      background: #fff;
-      border: .5px solid #e5e5e5;
-      border-radius: 8px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 10px;
       padding: 14px;
       cursor: pointer;
+      transition: all 0.15s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
     }
 
     .pcard:hover {
-      border-color: #1a6bbf;
+      border-color: var(--primary);
+      border-left-color: var(--primary);
+      box-shadow: 0 4px 14px rgba(27,55,100,0.12);
+      transform: translateY(-1px);
     }
 
     .pcard.absent-border {
       border-color: #E8A3A3;
+      border-left-color: #D94040;
     }
 
+    /* ── Avatars ── */
     .av {
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
       flex-shrink: 0;
     }
 
-    .av-n {
-      background: #E3EFFE;
-      color: #1352A0;
-    }
+    .av-n { background: linear-gradient(135deg, #e8f4fd 0%, #d0e8f8 100%); color: var(--primary); }
+    .av-a { background: #FDEAEA; border: 2px solid #D94040; color: #6B1212; }
 
-    .av-a {
-      background: #FDEAEA;
-      border: 2px solid #D94040;
-      color: #6B1212;
-    }
-
-    .pname {
-      font-size: 12px;
-      font-weight: 500;
-      color: #111;
-    }
-
-    .pname.abs {
-      color: #D94040;
-      text-decoration: line-through;
-    }
+    .pname { font-size: 12px; font-weight: 600; color: var(--text); }
+    .pname.abs { color: #D94040; text-decoration: line-through; }
 
     .abs-tag {
       font-size: 10px;
-      padding: 1px 5px;
+      padding: 1px 6px;
       border-radius: 99px;
       background: #FDEAEA;
       color: #6B1212;
-      font-weight: 500;
+      font-weight: 600;
       margin-left: 4px;
     }
 
     .prog-bar {
-      height: 4px;
-      background: #f0f0f0;
+      height: 5px;
+      background: #e8f4fd;
       border-radius: 99px;
       overflow: hidden;
       flex: 1;
-      margin: 0 5px;
+      margin: 0 6px;
     }
 
     .prog-fill {
       height: 100%;
       border-radius: 99px;
-      background: #378ADD;
+      background: linear-gradient(90deg, #1b3764 0%, #73caf1 100%);
     }
 
+    /* ── Drawer ── */
     .drawer {
-      background: #fff;
-      border: .5px solid #e5e5e5;
-      border-radius: 8px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
       margin-top: 14px;
       overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
 
     .drawer-hdr {
-      padding: 10px 14px;
-      border-bottom: .5px solid #e5e5e5;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: #fafafa;
+      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
     }
 
+    /* ── Overlay / Modal ── */
     .overlay {
-      position: relative;
-      background: rgba(0, 0, 0, .35);
-      min-height: 280px;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,30,60,0.52);
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 8px;
+      z-index: 1000;
+      backdrop-filter: blur(3px);
     }
 
     .modal {
-      background: #fff;
-      border: .5px solid #e5e5e5;
-      border-radius: 8px;
-      padding: 20px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
       width: 100%;
-      max-width: 480px;
-      max-height: 80vh;
+      max-width: 500px;
+      max-height: 82vh;
       overflow-y: auto;
+      box-shadow: 0 20px 50px rgba(27,55,100,0.22);
     }
 
-    .modal-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: #111;
-      margin-bottom: 4px;
-    }
+    .modal-title { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+    .modal-sub   { font-size: 12px; color: var(--text-3); margin-bottom: 16px; }
 
-    .modal-sub {
-      font-size: 12px;
-      color: #666;
-      margin-bottom: 14px;
-    }
-
+    /* ── Banners ── */
     .banner {
-      border-radius: 6px;
-      padding: 9px 13px;
+      border-radius: 8px;
+      padding: 10px 14px;
       font-size: 12px;
       margin-bottom: 12px;
+      font-weight: 500;
     }
 
-    .bn-info {
-      background: #EBF4FF;
-      color: #1a6bbf;
-    }
+    .bn-info    { background: var(--accent-light); color: var(--primary); border-left: 3px solid var(--accent); }
+    .bn-warn    { background: #fef3e2; color: #7a3d0a; border-left: 3px solid #f0a500; }
+    .bn-danger  { background: #fdeaea; color: #7a1212; border-left: 3px solid #D94040; }
+    .bn-success { background: #e6f4ee; color: #0d6e4a; border-left: 3px solid #0d6e4a; }
+    .bn-purple  { background: #EEEDFE; color: #3C3489; border-left: 3px solid #6B64E8; }
 
-    .bn-warn {
-      background: #fef3e2;
-      color: #7a3d0a;
-    }
-
-    .bn-success {
-      background: #e6f4ee;
-      color: #0d6e4a;
-    }
-
-    .bn-purple {
-      background: #EEEDFE;
-      color: #3C3489;
-      border: .5px solid #C5C0F5;
-    }
-
+    /* ── Item handoff rows ── */
     .hrow {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 7px 10px;
-      background: #fafafa;
-      border-radius: 6px;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-left: 3px solid var(--accent);
+      border-radius: 0 7px 7px 0;
       margin-bottom: 5px;
     }
 
-    .hrow-code {
-      font-family: monospace;
-      font-size: 11px;
-      color: #666;
-      width: 88px;
-      flex-shrink: 0;
-    }
+    .hrow-code { font-family: monospace; font-size: 11px; color: var(--primary); width: 88px; flex-shrink: 0; font-weight: 700; }
+    .hrow-name { font-size: 12px; flex: 1; }
 
-    .hrow-name {
-      font-size: 12px;
-      flex: 1;
-    }
-
+    /* ── RC link box ── */
     .rc-box {
-      background: #F4F3FE;
-      border: .5px solid #C5C0F5;
-      border-radius: 6px;
-      padding: 12px;
+      background: linear-gradient(135deg, #f4f3fe 0%, #ebe9fd 100%);
+      border: 1px solid #C5C0F5;
+      border-radius: 8px;
+      padding: 14px;
       margin-top: 8px;
     }
 
-    .rc-box-title {
-      font-size: 12px;
-      font-weight: 500;
-      color: #3C3489;
-      margin-bottom: 3px;
-    }
+    .rc-box-title { font-size: 12px; font-weight: 600; color: #3C3489; margin-bottom: 3px; }
+    .rc-box-sub   { font-size: 11px; color: #5E56C0; margin-bottom: 10px; }
 
-    .rc-box-sub {
-      font-size: 11px;
-      color: #5E56C0;
-      margin-bottom: 9px;
-    }
+    /* ── Item status badges ── */
+    .is-active { background: #E1F7EE; color: #085041; }
+    .is-drop   { background: #FDEAEA; color: #6B1212; }
 
-    .is-active {
-      background: #E1F7EE;
-      color: #085041;
-    }
+    .drop-btn       { color: #D94040; border-color: #F5BABA; }
+    .drop-btn:hover { background: #FDEAEA; }
+    .rec-btn        { color: #1D9E75; border-color: #9EE3C8; }
+    .rec-btn:hover  { background: #E3F7EF; }
 
-    .is-drop {
-      background: #FDEAEA;
-      color: #6B1212;
-    }
-
-    .drop-btn {
-      color: #D94040;
-      border-color: #F5BABA;
-    }
-
-    .drop-btn:hover {
-      background: #FDEAEA;
-    }
-
-    .rec-btn {
-      color: #1D9E75;
-      border-color: #9EE3C8;
-    }
-
-    .rec-btn:hover {
-      background: #E3F7EF;
-    }
-
+    /* ── Stat boxes ── */
     .stat-box {
-      background: #f5f5f5;
-      border-radius: 6px;
-      padding: 12px;
+      background: linear-gradient(135deg, #eef5ff 0%, #e8f4fd 100%);
+      border: 1px solid #d0e8f8;
+      border-radius: 10px;
+      padding: 14px;
     }
 
-    .stat-lbl {
-      font-size: 11px;
-      color: #666;
-      margin-bottom: 3px;
-    }
+    .stat-lbl { font-size: 11px; color: var(--text-2); margin-bottom: 4px; font-weight: 500; }
+    .stat-val { font-size: 22px; font-weight: 700; color: var(--primary); }
 
-    .stat-val {
-      font-size: 20px;
-      font-weight: 600;
-      color: #111;
-    }
-
-    .ck-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 0;
-    }
+    /* ── Attendance ── */
+    .ck-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
 
     .ck-row input[type=checkbox] {
-      width: 14px;
-      height: 14px;
-      accent-color: #378ADD;
+      width: 15px;
+      height: 15px;
+      accent-color: var(--primary);
       cursor: pointer;
     }
 
-    .ck-row label {
-      font-size: 12px;
-      color: #111;
-      cursor: pointer;
+    .ck-row label { font-size: 12px; color: var(--text); cursor: pointer; font-weight: 500; }
+
+    /* ── Role badges ── */
+    .role-badge { font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
+    .role-admin { background: linear-gradient(135deg, #fdf0e0 0%, #fde8cc 100%); color: #7A3D0A; }
+    .role-user  { background: var(--accent-light); color: var(--primary); }
+
+    /* ── Attendance card grid ── */
+    .att-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 10px;
+      padding: 16px;
     }
 
-    .role-badge {
+    .att-card {
+      background: #ffffff;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 8px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+      user-select: none;
+    }
+
+    .att-card:hover { border-color: var(--primary); box-shadow: 0 2px 10px rgba(27,55,100,0.1); }
+
+    .att-card.absent {
+      opacity: 0.38;
+      background: #f8fafc;
+      border-color: #e2e8f0;
+    }
+
+    .att-card.absent:hover { opacity: 0.55; border-color: #9ca3af; }
+
+    .att-av {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e8f4fd 0%, #c8e6f7 100%);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .att-card.absent .att-av {
+      background: #e5e7eb;
+      color: #9ca3af;
+    }
+
+    .att-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .att-status {
       font-size: 10px;
+      font-weight: 600;
       padding: 1px 7px;
       border-radius: 99px;
-      font-weight: 500;
     }
 
-    .role-admin {
-      background: #FDF0E0;
-      color: #7A3D0A;
-    }
-
-    .role-user {
-      background: #E3EFFE;
-      color: #1352A0;
-    }
+    .att-status.present { background: #e6f4ee; color: #0d6e4a; }
+    .att-status.absent  { background: #f1f5f9; color: #9ca3af; }
   </style>
 </head>
 
@@ -698,7 +633,12 @@
   <div class="app">
     <div class="sidebar">
       <div class="logo">
-        <div class="logo-t">StockTake Pro</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+          <div style="width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#73caf1,#1b3764);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1" fill="white" opacity="0.9"/><rect x="9" y="2" width="5" height="5" rx="1" fill="white" opacity="0.6"/><rect x="2" y="9" width="5" height="5" rx="1" fill="white" opacity="0.6"/><rect x="9" y="9" width="5" height="5" rx="1" fill="white" opacity="0.9"/></svg>
+          </div>
+          <div class="logo-t">StockTake Pro</div>
+        </div>
         <div class="logo-s">Warehouse Management</div>
       </div>
       <div style="padding:5px 0;">
@@ -723,14 +663,12 @@
             <path d="M5 8h6M8 5v6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
           </svg>Scan &amp; Count</button>
       </div>
-      <div style="margin-top:auto;padding:10px 14px;border-top:.5px solid #e5e5e5;">
+      <div style="margin-top:auto;padding:12px 14px;border-top:1px solid rgba(115,202,241,0.15);">
         <div style="display:flex;align-items:center;gap:8px;">
-          <div
-            style="width:26px;height:26px;border-radius:50%;background:#EBF4FF;color:#1a6bbf;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;">
-            AD</div>
+          <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#73caf1,#1b3764);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">AD</div>
           <div>
-            <div style="font-size:11px;font-weight:500;">Admin User</div>
-            <div style="font-size:10px;color:#666;">System Admin</div>
+            <div style="font-size:11px;font-weight:600;color:#fff;">Admin User</div>
+            <div style="font-size:10px;color:rgba(115,202,241,0.6);">System Admin</div>
           </div>
         </div>
       </div>
@@ -748,64 +686,71 @@
             <div style="font-size:15px;font-weight:600;">Sessions</div><button class="btn btn-primary btn-sm"
               onclick="toggleNSForm()">+ New session</button>
           </div>
-          <div id="ns-form" style="display:none;margin-bottom:14px;">
-            <div class="card">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;"><span
-                  style="font-size:13px;font-weight:500;">New session</span><button class="btn btn-sm"
-                  onclick="toggleNSForm()">Cancel</button></div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-                <div><label class="flbl req">Session name</label><input class="input" id="ns-name"
-                    placeholder="e.g. Year End 2025 Malaysia" />
-                  <div class="ferr" id="ns-name-err">Required</div>
+          <div id="ns-modal-wrap" style="display:none;">
+            <div class="overlay">
+              <div class="modal" style="max-width:520px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+                  <div>
+                    <div class="modal-title">New session</div>
+                    <div class="modal-sub" style="margin-bottom:0;">Fill in the details to create a new stocktake session.</div>
+                  </div>
+                  <button class="btn btn-sm" onclick="toggleNSForm()" style="flex-shrink:0;">✕</button>
                 </div>
-                <div><label class="flbl req">Session type</label><select class="select" id="ns-type">
-                    <option value="">Select type…</option>
-                    <option>Year End</option>
-                    <option>Cycle Count</option>
-                  </select>
-                  <div class="ferr" id="ns-type-err">Required</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                  <div><label class="flbl req">Session name</label><input class="input" id="ns-name"
+                      placeholder="e.g. Year End 2025 Malaysia" />
+                    <div class="ferr" id="ns-name-err">Required</div>
+                  </div>
+                  <div><label class="flbl req">Session type</label><select class="select" id="ns-type">
+                      <option value="">Select type…</option>
+                      <option>Year End</option>
+                      <option>Cycle Count</option>
+                    </select>
+                    <div class="ferr" id="ns-type-err">Required</div>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                  <div><label class="flbl req">Country</label><select class="select" id="ns-country"
+                      onchange="onCountry()">
+                      <option value="">Select…</option>
+                      <option>Malaysia</option>
+                      <option>Singapore</option>
+                    </select>
+                    <div class="ferr" id="ns-country-err">Required</div>
+                  </div>
+                  <div><label class="flbl req">Entity</label><select class="select" id="ns-entity">
+                      <option value="">Select…</option>
+                    </select>
+                    <div class="ferr" id="ns-entity-err">Required</div>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                  <div><label class="flbl req">Start date</label><input class="input" id="ns-start" type="date" />
+                    <div class="ferr" id="ns-start-err">Required</div>
+                  </div>
+                  <div><label class="flbl req">End date</label><input class="input" id="ns-end" type="date" />
+                    <div class="ferr" id="ns-end-err">Required</div>
+                  </div>
+                </div>
+                <div class="divider"></div>
+                <div class="ck-row"><input type="checkbox" id="ns-rc" onchange="onRcToggle()" /><label for="ns-rc">This is a recount session</label></div>
+                <div id="ns-rc-box" style="display:none;">
+                  <div class="rc-box">
+                    <div class="rc-box-title">Link to parent session</div>
+                    <div class="rc-box-sub">A recount session must be linked to an existing non-recount session.</div>
+                    <label class="flbl req" style="color:#3C3489;">Parent session</label>
+                    <select class="select" id="ns-parent">
+                      <option value="">Select parent session…</option>
+                    </select>
+                    <div class="ferr" id="ns-parent-err">Required</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;margin-top:16px;">
+                  <button class="btn btn-primary" style="flex:1;" onclick="createSession()">Create session</button>
+                  <button class="btn" onclick="toggleNSForm()">Cancel</button>
+                  <span id="ns-gen-err" style="font-size:11px;color:#D94040;display:none;">Please fill in all required fields.</span>
                 </div>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-                <div><label class="flbl req">Country</label><select class="select" id="ns-country"
-                    onchange="onCountry()">
-                    <option value="">Select…</option>
-                    <option>Malaysia</option>
-                    <option>Singapore</option>
-                  </select>
-                  <div class="ferr" id="ns-country-err">Required</div>
-                </div>
-                <div><label class="flbl req">Entity</label><select class="select" id="ns-entity">
-                    <option value="">Select…</option>
-                  </select>
-                  <div class="ferr" id="ns-entity-err">Required</div>
-                </div>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-                <div><label class="flbl req">Start date</label><input class="input" id="ns-start" type="date" />
-                  <div class="ferr" id="ns-start-err">Required</div>
-                </div>
-                <div><label class="flbl req">End date</label><input class="input" id="ns-end" type="date" />
-                  <div class="ferr" id="ns-end-err">Required</div>
-                </div>
-              </div>
-              <div class="divider"></div>
-              <div class="ck-row"><input type="checkbox" id="ns-rc" onchange="onRcToggle()" /><label for="ns-rc">This is
-                  a recount session</label></div>
-              <div id="ns-rc-box" style="display:none;">
-                <div class="rc-box">
-                  <div class="rc-box-title">Link to parent session</div>
-                  <div class="rc-box-sub">A recount session must be linked to an existing non-recount session.</div>
-                  <label class="flbl req" style="color:#3C3489;">Parent session</label><select class="select"
-                    id="ns-parent">
-                    <option value="">Select parent session…</option>
-                  </select>
-                  <div class="ferr" id="ns-parent-err">Required</div>
-                </div>
-              </div>
-              <div style="display:flex;gap:8px;align-items:center;margin-top:13px;"><button
-                  class="btn btn-primary btn-sm" onclick="createSession()">Create session</button><span id="ns-gen-err"
-                  style="font-size:11px;color:#D94040;display:none;">Please fill in all required fields.</span></div>
             </div>
           </div>
           <div class="card" style="padding:0;overflow:hidden;">
@@ -828,7 +773,7 @@
         <div class="page" id="page-detail">
           <div class="sess-hdr" id="sess-hdr"></div>
           <div class="stab-bar"><button class="stab active" id="stab-pairs" onclick="showTab('pairs',this)">Pair
-              Assignment</button><button class="stab" id="stab-items" onclick="showTab('items',this)">Item
+              Assignment</button><button class="stab" id="stab-attendance" onclick="showTab('attendance',this)">Attendance</button><button class="stab" id="stab-items" onclick="showTab('items',this)">Item
               Master</button><button class="stab" id="stab-reports"
               onclick="showTab('reports',this)">Reports</button><button class="stab" id="stab-gallery"
               onclick="showTab('gallery',this)">New Item Gallery</button></div>
@@ -905,6 +850,7 @@
                 </div>
               </div>
             </div>
+            <div id="absent-banner" style="display:none;margin-top:10px;"></div>
             <div class="pair-grid" id="pair-grid"></div>
             <div id="pair-drawer" style="display:none;" class="drawer">
               <div class="drawer-hdr">
@@ -933,18 +879,6 @@
                 </thead>
                 <tbody id="drw-tbody"></tbody>
               </table>
-            </div>
-            <div id="repair-wrap" style="display:none;margin-top:10px;">
-              <div class="overlay">
-                <div class="modal" style="max-width:360px;">
-                  <div class="modal-title" id="rep-title"></div>
-                  <div class="modal-sub" id="rep-sub"></div>
-                  <div id="rep-list" style="margin-bottom:14px;"></div>
-                  <div style="display:flex;gap:8px;"><button class="btn btn-primary" style="flex:1;" id="rep-confirm"
-                      onclick="confirmRepair()" disabled>Confirm</button><button class="btn"
-                      onclick="closeRepair()">Cancel</button></div>
-                </div>
-              </div>
             </div>
             <div id="editbin-wrap" style="display:none;margin-top:10px;">
               <div class="overlay">
@@ -981,6 +915,22 @@
                 </div>
               </div>
             </div>
+            <div id="edit-pair-wrap" style="display:none;margin-top:10px;">
+              <div class="overlay">
+                <div class="modal" style="max-width:400px;">
+                  <div class="modal-title" id="epr-title">Edit Pair</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+                    <div><label class="flbl req">Counter</label><select class="select" id="epr-counter" onchange="validateEditPair()"><option value="">Select…</option></select></div>
+                    <div><label class="flbl req">Checker</label><select class="select" id="epr-checker" onchange="validateEditPair()"><option value="">Select…</option></select></div>
+                  </div>
+                  <div style="display:flex;gap:8px;">
+                    <button class="btn btn-primary" style="flex:1;" id="epr-save" onclick="saveEditPair()" disabled>Save</button>
+                    <button class="btn btn-danger" onclick="deletePair()">Delete pair</button>
+                    <button class="btn" onclick="closeEditPair()">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div id="tab-items" style="display:none;">
@@ -991,7 +941,7 @@
               </div><button class="btn btn-primary btn-sm" id="btn-import-sap" onclick="importFromSAP()">↑ Import from
                 SAP</button>
             </div>
-            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
               <input class="input" placeholder="Search code or name…" style="flex:1;min-width:150px;" oninput="filterItems(this.value)" />
               <select class="select" style="width:auto;" id="item-status-filter" onchange="filterItems()">
                 <option value="all">All items</option>
@@ -1007,6 +957,7 @@
               <select class="select" style="width:auto;" id="item-entity-filter" onchange="filterItems()">
                 <option value="">All entities</option>
               </select>
+              <button class="btn btn-sm" id="btn-sel-all" onclick="selectAllFiltered()">Select all</button>
             </div>
             <div class="card" style="padding:0;overflow:hidden;">
               <table class="tbl">
@@ -1030,10 +981,21 @@
                 <tbody id="items-tbody"></tbody>
               </table>
             </div>
-            <div id="bulk-bar" style="display:none;gap:8px;align-items:center;margin-top:8px;"><span
+            <div id="bulk-bar" style="display:none;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;"><span
                 style="font-size:11px;color:#666;" id="sel-lbl">0 selected</span><button class="btn btn-sm drop-btn"
                 onclick="bulkDrop()">Drop selected</button><button class="btn btn-sm rec-btn"
-                onclick="bulkRecover()">Recover selected</button></div>
+                onclick="bulkRecover()">Recover selected</button><button class="btn btn-sm" onclick="clearSel()">Clear</button></div>
+          </div>
+
+          <div id="tab-attendance" style="display:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div>
+                <div style="font-size:14px;font-weight:500;">Attendance</div>
+                <div style="font-size:12px;color:#666;" id="att-sub"></div>
+              </div>
+              <button class="btn btn-sm" id="btn-import-att" onclick="loadAttendees()">&#8593; Import attendance</button>
+            </div>
+            <div id="attendance-list" class="card" style="padding:0;"></div>
           </div>
 
           <div id="tab-reports" style="display:none;">
@@ -1101,7 +1063,7 @@
     var items = [];
     var newItems = [];
     var pairs = [];
-    var selItems = new Set(), openPairId = null, repairPairId = null, repReplName = null, repReplInit = null, editBinPairId = null, nextPair = 5, curSessId = null;
+    var selItems = new Set(), openPairId = null, repairPairId = null, repReplName = null, repReplInit = null, editBinPairId = null, editPairId = null, nextPair = 5, curSessId = null;
     function cs() { return S.find(function (s) { return s.id === curSessId; }); }
     function isRC() { var s = cs(); return s && s.rc; }
     function varItems() { return items.filter(function (i) { return !i.dropped && (i.cnt === null || i.cnt !== i.sap); }); }
@@ -1109,47 +1071,127 @@
     function linkedRC(sid) { return S.find(function (s) { return s.rc && s.parentId === sid; }); }
     function goSessions() { document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('active'); }); document.getElementById('page-sessions').classList.add('active'); document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.remove('active'); }); document.getElementById('nav-sessions').classList.add('active'); document.getElementById('bc-sep').style.display = 'none'; document.getElementById('bc-cur').style.display = 'none'; document.getElementById('topbar-right').innerHTML = '<button class="btn btn-primary btn-sm" onclick="toggleNSForm()">+ New session</button>'; renderSessTable(); }
     function goDetail() { document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('active'); }); document.getElementById('page-detail').classList.add('active'); document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.remove('active'); }); document.getElementById('nav-detail').classList.add('active'); }
-    function renderSessTable() { var tb = document.getElementById('sess-tbody'); tb.innerHTML = ''; S.forEach(function (s) { var sc = s.status === 'Active' ? 'b-success' : s.status === 'Closed' ? 'b-gray' : 'b-warn'; var rcTag = s.rc ? '<span class="badge b-purple" style="margin-left:5px;font-size:10px;">Recount</span>' : ''; var tr = document.createElement('tr'); tr.style.cursor = 'pointer'; tr.onclick = function () { openSession(s.id); }; tr.innerHTML = '<td><div style="font-size:12px;font-weight:500;color:#1a6bbf;">' + s.id + rcTag + '</div><div style="font-size:11px;color:#666;">' + s.name + '</div></td><td>' + s.type + '</td><td>' + s.entity + '</td><td style="font-size:11px;">' + s.start + ' – ' + s.end + '</td><td><span class="badge ' + sc + '">' + s.status + '</span></td><td><div style="display:flex;align-items:center;gap:4px;"><div class="prog-bar" style="width:60px;margin:0;"><div class="prog-fill" style="width:' + s.progress + '%;' + (s.progress === 100 ? 'background:#1D9E75;' : '') + '"></div></div><span style="font-size:11px;">' + s.progress + '%</span></div></td>'; tb.appendChild(tr); }); }
+    function renderSessTable() { var tb = document.getElementById('sess-tbody'); tb.innerHTML = ''; S.forEach(function (s) { var sc = s.status === 'Active' ? 'b-success' : s.status === 'Closed' ? 'b-gray' : 'b-warn'; var rcTag = s.rc ? '<span class="badge b-purple" style="margin-left:5px;font-size:10px;">Recount</span>' : ''; var tr = document.createElement('tr'); tr.style.cursor = 'pointer'; tr.onclick = function () { openSession(s.id); }; tr.innerHTML = '<td><div style="font-size:12px;font-weight:600;color:#1a202c;">' + s.name + rcTag + '</div><div style="font-size:11px;color:#718096;font-family:monospace;">' + s.id + '</div></td><td>' + s.type + '</td><td>' + s.entity + '</td><td style="font-size:11px;">' + s.start + ' – ' + s.end + '</td><td><span class="badge ' + sc + '">' + s.status + '</span></td><td><div style="display:flex;align-items:center;gap:4px;"><div class="prog-bar" style="width:60px;margin:0;"><div class="prog-fill" style="width:' + s.progress + '%;' + (s.progress === 100 ? 'background:#1D9E75;' : '') + '"></div></div><span style="font-size:11px;">' + s.progress + '%</span></div></td>'; tb.appendChild(tr); }); }
     function openSession(sid) { curSessId = sid; var s = cs(); document.getElementById('nav-detail').style.display = ''; document.getElementById('nav-detail-lbl').textContent = s.id; document.getElementById('bc-sep').style.display = ''; document.getElementById('bc-cur').style.display = ''; document.getElementById('bc-cur').textContent = s.id; document.getElementById('topbar-right').innerHTML = ''; goDetail(); document.querySelectorAll('.stab').forEach(function (t) { t.classList.remove('active'); }); document.getElementById('stab-pairs').classList.add('active'); showTab('pairs', null); renderSessHeader(); renderPairBanner(); renderPairs(); loadItems(); renderGallery(); var rc = isRC(); document.getElementById('pair-form-normal').style.display = rc ? 'none' : ''; document.getElementById('pair-form-recount').style.display = rc ? '' : 'none'; document.getElementById('col-pair').style.display = rc ? '' : 'none'; document.getElementById('col-src').style.display = rc ? '' : 'none'; document.getElementById('items-sub').textContent = rc ? '"Assigned to pair" is editable for recount sessions.' : 'Drop items to exclude from this session.'; }
-    function renderSessHeader() { var s = cs(); var rc = isRC(); var statusC = s.status === 'Active' ? '#0d6e4a' : s.status === 'Closed' ? '#666' : '#7a3d0a'; var rcBadge = rc ? '<span class="badge b-purple" style="margin-left:6px;">Recount</span>' : ''; var linked = !rc ? linkedRC(s.id) : null; var actionBtns = '<button class="btn btn-success btn-sm" onclick="showTab(\'reports\',document.getElementById(\'stab-reports\'));buildReport();">&#8595; Generate report</button>'; if (s.status === 'Active') { actionBtns += '<button class="btn btn-danger btn-sm" onclick="openEndModal()">&#9632; End session</button>'; } var parentLine = ''; if (rc && s.parentId) { var ps = S.find(function (x) { return x.id === s.parentId; }); parentLine = '<div style="margin-top:10px;" class="banner bn-purple">Recount — linked to parent session: <strong>' + s.parentId + (ps ? ' &nbsp;' + ps.name : '') + '</strong></div>'; } if (linked) { parentLine = '<div style="margin-top:10px;" class="banner bn-warn">Variance items &amp; new items will be passed to recount session <strong>' + linked.id + ' — ' + linked.name + '</strong> when ended.</div>'; } document.getElementById('sess-hdr').innerHTML = '<div class="sess-hdr-top"><div><div style="display:flex;align-items:center;gap:6px;"><div class="sess-title">' + s.name + '</div>' + rcBadge + '</div><div class="sess-id">' + s.id + ' · ' + s.type + ' · ' + s.entity + ' · ' + s.start + ' – ' + s.end + '</div></div><div class="sess-actions">' + actionBtns + '</div></div><div class="sess-meta-row"><div class="meta-chip"><div class="meta-lbl">Status</div><div class="meta-val" style="color:' + statusC + '">● ' + s.status + '</div></div><div class="meta-chip"><div class="meta-lbl">Progress</div><div class="meta-val">' + s.progress + '%</div></div><div class="meta-chip"><div class="meta-lbl">Country</div><div class="meta-val">' + s.country + '</div></div>' + (rc && s.parentId ? '<div class="meta-chip"><div class="meta-lbl">Parent session</div><div class="meta-val" style="color:#1a6bbf;">' + s.parentId + '</div></div>' : '') + (linked ? '<div class="meta-chip"><div class="meta-lbl">Recount session</div><div class="meta-val" style="color:#1a6bbf;">' + linked.id + '</div></div>' : '') + '</div>' + parentLine; }
-    function openEndModal() { var s = cs(); var rc = isRC(); var vItems = varItems(); var nItems = approvedNew(); var linked = !rc ? linkedRC(s.id) : null; document.getElementById('em-title').textContent = 'End session — ' + s.id; document.getElementById('em-sub').textContent = rc ? 'Closing this recount session will lock all counts and mark it as Closed.' : 'Review the handoff before ending this session.'; var bodyHtml = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;"><div class="stat-box"><div class="stat-lbl">Active items</div><div class="stat-val">' + items.filter(function (i) { return !i.dropped; }).length + '</div></div><div class="stat-box"><div class="stat-lbl">Variance items</div><div class="stat-val" style="color:#7a3d0a;">' + vItems.length + '</div></div><div class="stat-box"><div class="stat-lbl">New items</div><div class="stat-val" style="color:#1a6bbf;">' + nItems.length + '</div></div></div>'; if (!rc) { if (linked) { bodyHtml += '<div style="font-size:12px;font-weight:500;margin-bottom:8px;">Items to pass → <span style="color:#1a6bbf;">' + linked.id + '</span> as item master</div>'; if (vItems.length === 0 && nItems.length === 0) { bodyHtml += '<div class="banner bn-success">No variance or new items — nothing to pass to recount session.</div>'; } else { vItems.forEach(function (i) { var st = i.cnt === null ? 'Not found' : 'Variance'; var bc = i.cnt === null ? 'b-danger' : 'b-warn'; bodyHtml += '<div class="hrow"><span class="hrow-code">' + i.code + '</span><span class="hrow-name">' + i.name + '</span><span class="badge ' + bc + '">' + st + '</span></div>'; }); nItems.forEach(function (n) { bodyHtml += '<div class="hrow"><span class="hrow-code">NEW</span><span class="hrow-name">' + n.name + '</span><span class="badge b-purple">New item</span></div>'; }); } } else { bodyHtml += '<div class="banner bn-info">No linked recount session. Variance &amp; new items will appear in the report only.</div>'; } } document.getElementById('em-body').innerHTML = bodyHtml; var footer = document.getElementById('em-footer'); footer.innerHTML = ''; var cb = document.createElement('button'); cb.className = 'btn btn-danger'; cb.style.flex = '1'; cb.textContent = (!rc && linked) ? 'End & pass to recount session' : 'Confirm end session'; cb.onclick = function () { doEnd(!rc && !!linked, linked); }; footer.appendChild(cb); var cx = document.createElement('button'); cx.className = 'btn'; cx.textContent = 'Cancel'; cx.onclick = function () { document.getElementById('end-modal-wrap').style.display = 'none'; }; footer.appendChild(cx); document.getElementById('end-modal-wrap').style.display = ''; }
-    function doEnd(pass, linked) { var s = cs(); s.status = 'Closed'; s.progress = 100; sb.from('sessions').update({ status: 'Closed', progress: 100 }).eq('id', s.id).then(function () { }); if (pass && linked) { varItems().forEach(function (i) { items.push({ id: Date.now() + Math.random(), code: i.code, name: i.name, grp: i.grp, batch: i.batch, uom: i.uom, pairId: 'P01', bin: i.bin, dropped: false, sap: i.cnt || 0, cnt: null, src: 'variance' }); }); approvedNew().forEach(function (n) { items.push({ id: Date.now() + Math.random(), code: n.code || 'NEW', name: n.name, grp: 'Unknown', batch: n.batch || '—', uom: 'PCS', pairId: 'P01', bin: n.bin, dropped: false, sap: n.qty, cnt: null, src: 'new-item' }); }); linked.status = 'Active'; } document.getElementById('end-modal-wrap').style.display = 'none'; renderSessHeader(); goSessions(); }
-    function showTab(name, el) { ['pairs', 'items', 'reports', 'gallery'].forEach(function (t) { document.getElementById('tab-' + t).style.display = t === name ? '' : 'none'; }); document.querySelectorAll('.stab').forEach(function (t) { t.classList.remove('active'); }); (el || document.getElementById('stab-' + name)).classList.add('active'); if (name === 'pairs') loadPairs(); }
-    function loadPairs() { if (!curSessId) return; sb.from('pairs').select('*').eq('session_id', curSessId).order('created_at', { ascending: true }).then(function (res) { if (res.error) { console.error(res.error); return; } var ini = function (n) { return (n || '').split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase(); }; pairs = (res.data || []).map(function (p) { return { id: p.id, c: p.counter_name, ci: ini(p.counter_name), ca: !!p.counter_absent, k: p.checker_name, ki: ini(p.checker_name), ka: !!p.checker_absent, bin: p.bin_id || '—', role: p.role || 'User', prog: p.progress || 0 }; }); var nums = pairs.map(function (p) { return parseInt(p.id.replace(/\D/g, ''), 10) || 0; }); nextPair = nums.length ? Math.max.apply(null, nums) + 1 : 1; renderPairs(); }); }
+    function renderSessHeader() { var s = cs(); var rc = isRC(); var statusC = s.status === 'Active' ? '#4ade80' : s.status === 'Closed' ? 'rgba(255,255,255,0.45)' : '#fbbf24'; var rcBadge = rc ? '<span class="badge b-purple" style="margin-left:6px;">Recount</span>' : ''; var linked = !rc ? linkedRC(s.id) : null; var actionBtns = '<button class="btn btn-success btn-sm" onclick="showTab(\'reports\',document.getElementById(\'stab-reports\'));buildReport();">&#8595; Generate report</button>'; if (s.status === 'Active') { actionBtns += '<button class="btn btn-danger btn-sm" onclick="openEndModal()">&#9632; End session</button>'; } var parentLine = ''; if (rc && s.parentId) { var ps = S.find(function (x) { return x.id === s.parentId; }); parentLine = '<div style="margin-top:10px;" class="banner bn-purple">Recount — linked to parent session: <strong>' + s.parentId + (ps ? ' &nbsp;' + ps.name : '') + '</strong></div>'; } if (linked) { parentLine = '<div style="margin-top:10px;" class="banner bn-warn">Variance items &amp; new items will be passed to recount session <strong>' + linked.id + ' — ' + linked.name + '</strong> when ended.</div>'; } document.getElementById('sess-hdr').innerHTML = '<div class="sess-hdr-top"><div><div style="display:flex;align-items:center;gap:6px;"><div class="sess-title">' + s.name + '</div>' + rcBadge + '</div><div class="sess-id">' + s.id + ' · ' + s.type + ' · ' + s.entity + ' · ' + s.start + ' – ' + s.end + '</div></div><div class="sess-actions">' + actionBtns + '</div></div><div class="sess-meta-row"><div class="meta-chip"><div class="meta-lbl">Status</div><div class="meta-val" style="color:' + statusC + '">● ' + s.status + '</div></div><div class="meta-chip"><div class="meta-lbl">Progress</div><div class="meta-val">' + s.progress + '%</div></div><div class="meta-chip"><div class="meta-lbl">Country</div><div class="meta-val">' + s.country + '</div></div>' + (rc && s.parentId ? '<div class="meta-chip"><div class="meta-lbl">Parent session</div><div class="meta-val" style="color:#73caf1;">' + s.parentId + '</div></div>' : '') + (linked ? '<div class="meta-chip"><div class="meta-lbl">Recount session</div><div class="meta-val" style="color:#73caf1;">' + linked.id + '</div></div>' : '') + '</div>' + parentLine; }
+    function openEndModal() { var s = cs(); var rc = isRC(); var vItems = varItems(); var nItems = approvedNew(); var linked = !rc ? linkedRC(s.id) : null; document.getElementById('em-title').textContent = 'End session — ' + s.id; document.getElementById('em-sub').textContent = rc ? 'Closing this recount session will lock all counts and mark it as Closed.' : 'Review the handoff before ending this session.'; var bodyHtml = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;"><div class="stat-box"><div class="stat-lbl">Active items</div><div class="stat-val">' + items.filter(function (i) { return !i.dropped; }).length + '</div></div><div class="stat-box"><div class="stat-lbl">Variance items</div><div class="stat-val" style="color:#d97706;">' + vItems.length + '</div></div><div class="stat-box"><div class="stat-lbl">New items</div><div class="stat-val" style="color:#1b3764;">' + nItems.length + '</div></div></div>'; if (!rc) { if (linked) { bodyHtml += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Items to pass → <span style="color:#1b3764;">' + linked.id + '</span> as item master</div>'; if (vItems.length === 0 && nItems.length === 0) { bodyHtml += '<div class="banner bn-success">No variance or new items — nothing to pass to recount session.</div>'; } else { vItems.forEach(function (i) { var st = i.cnt === null ? 'Not found' : 'Variance'; var bc = i.cnt === null ? 'b-danger' : 'b-warn'; bodyHtml += '<div class="hrow"><span class="hrow-code">' + i.code + '</span><span class="hrow-name">' + i.name + '</span><span class="badge ' + bc + '">' + st + '</span></div>'; }); nItems.forEach(function (n) { bodyHtml += '<div class="hrow"><span class="hrow-code">NEW</span><span class="hrow-name">' + n.name + '</span><span class="badge b-purple">New item</span></div>'; }); } } else { bodyHtml += '<div class="banner bn-info">No linked recount session. Variance &amp; new items will appear in the report only.</div>'; } } document.getElementById('em-body').innerHTML = bodyHtml; var footer = document.getElementById('em-footer'); footer.innerHTML = ''; var cb = document.createElement('button'); cb.className = 'btn btn-danger'; cb.style.flex = '1'; cb.textContent = (!rc && linked) ? 'End & pass to recount session' : 'Confirm end session'; cb.onclick = function () { doEnd(!rc && !!linked, linked); }; var cx = document.createElement('button'); cx.className = 'btn'; cx.textContent = 'Cancel'; cx.onclick = function () { document.getElementById('end-modal-wrap').style.display = 'none'; }; var topBar = document.createElement('div'); topBar.style.cssText = 'display:flex;gap:8px;margin-bottom:16px;'; topBar.appendChild(cb); topBar.appendChild(cx); document.getElementById('em-body').prepend(topBar); document.getElementById('end-modal-wrap').style.display = ''; }
+    function doEnd(pass, linked) { var s = cs(); s.status = 'Closed'; s.progress = 100; sb.from('sessions').update({ status: 'Closed', progress: 100 }).eq('id', s.id).then(function () { }); if (pass && linked) { var toInsert = []; varItems().forEach(function (i) { toInsert.push({ id: 'RC-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), session_id: linked.id, code: i.code, name: i.name, group: i.grp, batch: i.batch || null, uom: i.uom || 'PCS', bin: i.bin || null, dropped: false, sap_qty: i.cnt || 0, count_qty: null, pair_id: null, src: 'variance' }); }); approvedNew().forEach(function (n) { toInsert.push({ id: 'RC-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), session_id: linked.id, code: n.code || 'NEW', name: n.name, group: 'Unknown', batch: n.batch || null, uom: 'PCS', bin: n.bin || null, dropped: false, sap_qty: n.qty || 0, count_qty: null, pair_id: null, src: 'new-item' }); }); linked.status = 'Active'; sb.from('sessions').update({ status: 'Active' }).eq('id', linked.id).then(function () {}); if (toInsert.length) { sb.from('items').insert(toInsert).then(function (res) { if (res.error) { console.error('Failed to insert recount items:', res.error); } }); } } document.getElementById('end-modal-wrap').style.display = 'none'; renderSessHeader(); goSessions(); }
+    function showTab(name, el) { ['pairs', 'attendance', 'items', 'reports', 'gallery'].forEach(function (t) { document.getElementById('tab-' + t).style.display = t === name ? '' : 'none'; }); document.querySelectorAll('.stab').forEach(function (t) { t.classList.remove('active'); }); (el || document.getElementById('stab-' + name)).classList.add('active'); if (name === 'pairs') loadPairs(); if (name === 'attendance') loadAttendees(); }
+    function loadPairs() { if (!curSessId) return; sb.from('pairs').select('*').eq('session_id', curSessId).order('created_at', { ascending: true }).then(function (res) { if (res.error) { console.error(res.error); return; } var ini = function (n) { return (n || '').split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase(); }; pairs = (res.data || []).map(function (p) { return { id: p.id, c: p.counter_name, ci: ini(p.counter_name), ca: !!p.counter_absent, k: p.checker_name, ki: ini(p.checker_name), ka: !!p.checker_absent, bin: p.bin_id || '—', role: p.role || 'User', prog: p.progress || 0 }; }); var nums = pairs.map(function (p) { return parseInt(p.id.replace(/\D/g, ''), 10) || 0; }); nextPair = nums.length ? Math.max.apply(null, nums) + 1 : 1; renderPairs(); loadAttendees(); }); }
+
+    function loadAttendees() {
+      if (!curSessId) return;
+      sb.from('session_attendees').select('*').eq('session_id', curSessId).order('user_name', { ascending: true }).then(function (res) {
+        if (res.error) { console.error(res.error); return; }
+        if (res.data && res.data.length) {
+          attendees = res.data.map(function (a) { return { userId: a.user_id, name: a.user_name, attended: !!a.attended }; });
+        } else {
+          attendees = usersList.map(function (u) { return { userId: u.id, name: u.name, attended: true }; });
+          if (attendees.length) { sb.from('session_attendees').insert(attendees.map(function (a) { return { session_id: curSessId, user_id: a.userId, user_name: a.name, attended: true }; })).then(function (r) { if (r.error) console.error(r.error); }); }
+        }
+        crossCheckPairsAttendance();
+        renderAttendance();
+      });
+    }
+
+    function crossCheckPairsAttendance() {
+      var toUpdate = [];
+      pairs.forEach(function (p) {
+        var cAtt = attendees.find(function (a) { return a.name === p.c; });
+        var kAtt = attendees.find(function (a) { return a.name === p.k; });
+        var newCa = cAtt ? !cAtt.attended : p.ca;
+        var newKa = kAtt ? !kAtt.attended : p.ka;
+        if (newCa !== p.ca || newKa !== p.ka) {
+          p.ca = newCa; p.ka = newKa;
+          toUpdate.push({ id: p.id, counter_absent: p.ca, checker_absent: p.ka });
+        }
+      });
+      toUpdate.forEach(function (u) {
+        sb.from('pairs').update({ counter_absent: u.counter_absent, checker_absent: u.checker_absent }).eq('id', u.id).then(function () {});
+      });
+      renderPairs();
+    }
+
+
+    function toggleAttendee(userId) {
+      var a = attendees.find(function (x) { return x.userId === userId; });
+      if (!a) return;
+      a.attended = !a.attended;
+      sb.from('session_attendees').upsert({ session_id: curSessId, user_id: a.userId, user_name: a.name, attended: a.attended }, { onConflict: 'session_id,user_id' }).then(function (r) { if (r.error) console.error(r.error); });
+      crossCheckPairsAttendance();
+      renderAttendance();
+    }
+
+    function renderAttendance() {
+      var list = document.getElementById('attendance-list'); if (!list) return;
+      var sub = document.getElementById('att-sub');
+      if (!attendees.length) {
+        list.innerHTML = '<div style="padding:24px;font-size:12px;color:#718096;text-align:center;">No attendees loaded. Click Import attendance.</div>';
+        if (sub) sub.textContent = '';
+        return;
+      }
+      var absent = attendees.filter(function (a) { return !a.attended; }).length;
+      if (sub) sub.textContent = attendees.length + ' users · ' + (absent ? absent + ' absent' : 'all present');
+      var grid = document.createElement('div');
+      grid.className = 'att-grid';
+      attendees.forEach(function (a) {
+        var ini = a.name.split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+        var inPair = pairs.find(function (p) { return p.c === a.name || p.k === a.name; });
+        var card = document.createElement('div');
+        card.className = 'att-card' + (!a.attended ? ' absent' : '');
+        var pairBadge = inPair ? '<span style="font-size:9px;font-weight:700;color:#1b3764;background:#e8f4fd;padding:1px 6px;border-radius:99px;">' + inPair.id + '</span>' : '';
+        var warnBadge = (inPair && !a.attended) ? '<span style="font-size:9px;color:#c0392b;font-weight:600;">⚠ replace</span>' : '';
+        var statusCls = a.attended ? 'present' : 'absent';
+        var statusTxt = a.attended ? 'Present' : 'Absent';
+        card.innerHTML = '<div class="att-av">' + ini + '</div><div class="att-name">' + a.name + '</div>' + pairBadge + warnBadge + '<span class="att-status ' + statusCls + '">' + statusTxt + '</span>';
+        card.onclick = function () { toggleAttendee(a.userId); };
+        grid.appendChild(card);
+      });
+      list.innerHTML = '';
+      list.appendChild(grid);
+    }
     function validatePairForm() { var ok = document.getElementById('pc').value && document.getElementById('pk').value; document.getElementById('btn-create-pair-normal').disabled = !ok; }
     function validatePairFormRC() { var ok = document.getElementById('rc-pc').value && document.getElementById('rc-pk').value; document.getElementById('btn-create-pair-rc').disabled = !ok; }
     function renderPairBanner() { var s = cs(); var rc = isRC(); var b = document.getElementById('pair-banner'); if (rc && s.parentId) { var ps = S.find(function (x) { return x.id === s.parentId; }); b.style.display = ''; b.className = 'banner bn-purple'; b.innerHTML = 'Recount — parent: <strong>' + s.parentId + (ps ? ' — ' + ps.name : '') + '</strong>'; } else { b.style.display = 'none'; } }
-    function toggleAddPair() { var f = document.getElementById('add-pair-form'); f.style.display = f.style.display === 'none' ? '' : 'none'; if (f.style.display === 'none') { ['pc', 'pk', 'rc-pc', 'rc-pk', 'rc-bin'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; }); document.getElementById('rc-role').value = 'User'; document.getElementById('btn-create-pair-normal').disabled = true; document.getElementById('btn-create-pair-rc').disabled = true; } }
-    function createPair() { var rc = isRC(); var ini = function (n) { return n.split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase(); }; var newPair; if (rc) { var c = document.getElementById('rc-pc').value, k = document.getElementById('rc-pk').value, bin = document.getElementById('rc-bin').value, role = document.getElementById('rc-role').value; if (!c || !k) return; newPair = { id: 'P0' + nextPair, c: c, ci: ini(c), ca: false, k: k, ki: ini(k), ka: false, bin: bin || '—', role: role, prog: 0 }; } else { var c2 = document.getElementById('pc').value, k2 = document.getElementById('pk').value; if (!c2 || !k2) return; newPair = { id: 'P0' + nextPair, c: c2, ci: ini(c2), ca: false, k: k2, ki: ini(k2), ka: false, bin: '—', role: 'User', prog: 0 }; } pairs.push(newPair); nextPair++; sb.from('pairs').insert({ id: newPair.id, session_id: curSessId, counter_name: newPair.c, checker_name: newPair.k, bin_id: newPair.bin !== '—' ? newPair.bin : null, role: newPair.role, counter_absent: false, checker_absent: false, progress: 0 }).then(function (res) { if (res.error) alert('Failed to save pair: ' + res.error.message); }); document.getElementById('add-pair-form').style.display = 'none'; renderPairs(); }
-    function renderPairs() { var grid = document.getElementById('pair-grid'); grid.innerHTML = ''; var rc = isRC(); pairs.forEach(function (p) { var abs = p.ca || p.ka; var div = document.createElement('div'); div.className = 'pcard' + (abs ? ' absent-border' : ''); div.onclick = function (e) { if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT') return; openDrawer(p.id); }; var at = function (a) { return a ? '<span class="abs-tag">Absent</span>' : ''; }; var roleHtml = rc ? '<div style="margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span style="font-size:11px;color:#666;">Role:</span><span class="role-badge ' + (p.role === 'Admin' ? 'role-admin' : 'role-user') + '">' + p.role + '</span></div>' : ''; var binHtml = rc ? '<div style="margin-bottom:8px;font-size:11px;"><span style="color:#666;">Bin: </span><span style="font-family:monospace;">' + p.bin + '</span></div>' : ''; var itemCountHtml = rc ? '<span style="font-size:12px;color:#1a6bbf;font-weight:500;">' + items.filter(function (i) { return i.pairId === p.id && !i.dropped; }).length + ' items</span>' : ''; var editBinBtn = rc ? '<button class="btn btn-sm" onclick="openEditBin(\'' + p.id + '\')">Edit bin</button>' : ''; div.innerHTML = '<div style="font-size:10px;font-weight:500;color:#aaa;text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px;">Pair ' + p.id + '</div><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:11px;"><div style="display:flex;align-items:center;gap:8px;"><div class="av ' + (p.ca ? 'av-a' : 'av-n') + '">' + p.ci + '</div><div><div class="pname' + (p.ca ? ' abs' : '') + '">' + p.c + at(p.ca) + '</div><div style="font-size:11px;color:#666;">Counter</div></div></div><div style="display:flex;align-items:center;gap:8px;"><div class="av ' + (p.ka ? 'av-a' : 'av-n') + '">' + p.ki + '</div><div><div class="pname' + (p.ka ? ' abs' : '') + '">' + p.k + at(p.ka) + '</div><div style="font-size:11px;color:#666;">Checker</div></div></div></div><div style="border-top:.5px solid #e5e5e5;padding-top:9px;">' + roleHtml + binHtml + '<div style="display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:3px;"><div class="prog-bar"><div class="prog-fill" style="width:' + p.prog + '%;' + (p.prog > 85 ? 'background:#1D9E75;' : '') + '"></div></div><span style="font-size:11px;color:#666;">' + p.prog + '%</span></div>' + itemCountHtml + '</div><div style="display:flex;gap:5px;margin-top:7px;">' + (abs ? '<button class="btn btn-sm btn-primary" onclick="openRepair(\'' + p.id + '\')">Repaire</button>' : '') + editBinBtn + '</div></div>'; grid.appendChild(div); }); }
+    function toggleAddPair() { var f = document.getElementById('add-pair-form'); f.style.display = f.style.display === 'none' ? '' : 'none'; if (f.style.display === 'none') { ['pc', 'pk', 'rc-pc', 'rc-pk', 'rc-bin'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; }); document.getElementById('rc-role').value = 'User'; document.getElementById('btn-create-pair-normal').disabled = true; document.getElementById('btn-create-pair-rc').disabled = true; } else { refreshPairFormDropdowns(); } }
+    function refreshPairFormDropdowns() { var assigned = new Set(); pairs.forEach(function (p) { assigned.add(p.c); assigned.add(p.k); }); var available = usersList.filter(function (u) { return !assigned.has(u.name); }); var opts = available.map(function (u) { return '<option>' + u.name + '</option>'; }).join(''); ['#pc', '#pk', '#rc-pc', '#rc-pk'].forEach(function (sel) { var el = document.querySelector(sel); if (!el) return; el.innerHTML = '<option value="">Select\u2026</option>' + opts; }); }
+    function createPair() { var rc = isRC(); var ini = function (n) { return n.split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase(); }; var nums = pairs.map(function (p) { return parseInt(p.id.replace(/\D/g, ''), 10) || 0; }); var newNum = nums.length ? Math.max.apply(null, nums) + 1 : 1; var newId = 'P' + String(newNum).padStart(2, '0'); var newPair; if (rc) { var c = document.getElementById('rc-pc').value, k = document.getElementById('rc-pk').value, bin = document.getElementById('rc-bin').value, role = document.getElementById('rc-role').value; if (!c || !k) return; newPair = { id: newId, c: c, ci: ini(c), ca: false, k: k, ki: ini(k), ka: false, bin: bin || '—', role: role, prog: 0 }; } else { var c2 = document.getElementById('pc').value, k2 = document.getElementById('pk').value; if (!c2 || !k2) return; newPair = { id: newId, c: c2, ci: ini(c2), ca: false, k: k2, ki: ini(k2), ka: false, bin: '—', role: 'User', prog: 0 }; } pairs.push(newPair); sb.from('pairs').insert({ id: newPair.id, session_id: curSessId, counter_name: newPair.c, checker_name: newPair.k, bin_id: newPair.bin !== '—' ? newPair.bin : null, role: newPair.role, counter_absent: false, checker_absent: false, progress: 0 }).then(function (res) { if (res.error) alert('Failed to save pair: ' + res.error.message); }); document.getElementById('add-pair-form').style.display = 'none'; renderPairs(); }
+    function renderPairs() { var grid = document.getElementById('pair-grid'); grid.innerHTML = ''; var rc = isRC(); pairs.forEach(function (p) { var abs = p.ca || p.ka; var div = document.createElement('div'); div.className = 'pcard' + (abs ? ' absent-border' : ''); div.onclick = function (e) { if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT') return; if (rc) { openDrawer(p.id); } else { openEditPair(p.id); } }; var at = function (a) { return a ? '<span class="abs-tag">Absent</span>' : ''; }; var roleHtml = rc ? '<div style="margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span style="font-size:11px;color:#666;">Role:</span><span class="role-badge ' + (p.role === 'Admin' ? 'role-admin' : 'role-user') + '">' + p.role + '</span></div>' : ''; var binHtml = rc ? '<div style="margin-bottom:8px;font-size:11px;"><span style="color:#666;">Bin: </span><span style="font-family:monospace;">' + p.bin + '</span></div>' : ''; var itemCountHtml = rc ? '<span style="font-size:12px;color:#1b3764;font-weight:600;">' + items.filter(function (i) { return i.pairId === p.id && !i.dropped; }).length + ' items</span>' : ''; var editBinBtn = rc ? '<button class="btn btn-sm" onclick="openEditBin(\'' + p.id + '\')">Edit bin</button>' : ''; div.innerHTML = '<div style="font-size:10px;font-weight:700;color:#1b3764;opacity:0.55;text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px;">Pair' + p.id + '</div><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:11px;"><div style="display:flex;align-items:center;gap:8px;"><div class="av ' + (p.ca ? 'av-a' : 'av-n') + '">' + p.ci + '</div><div><div class="pname' + (p.ca ? ' abs' : '') + '">' + p.c + at(p.ca) + '</div><div style="font-size:11px;color:#666;">Counter</div></div></div><div style="display:flex;align-items:center;gap:8px;"><div class="av ' + (p.ka ? 'av-a' : 'av-n') + '">' + p.ki + '</div><div><div class="pname' + (p.ka ? ' abs' : '') + '">' + p.k + at(p.ka) + '</div><div style="font-size:11px;color:#666;">Checker</div></div></div></div><div style="border-top:1px solid #e2e8f0;padding-top:9px;">' + roleHtml + binHtml + '<div style="display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:3px;"><div class="prog-bar"><div class="prog-fill" style="width:' + p.prog + '%;' + (p.prog > 85 ? 'background:#1D9E75;' : '') + '"></div></div><span style="font-size:11px;color:#666;">' + p.prog + '%</span></div>' + itemCountHtml + '</div><div style="display:flex;gap:5px;margin-top:7px;">' + editBinBtn + '</div></div>'; grid.appendChild(div); }); }
     function openDrawer(pid) { openPairId = pid; var p = pairs.find(function (x) { return x.id === pid; }); document.getElementById('drw-title').textContent = 'Items — Pair ' + pid + ' · ' + p.c + ' / ' + p.k; document.getElementById('drw-search').value = ''; document.getElementById('drw-filter').value = 'all'; renderDrawer(); document.getElementById('pair-drawer').style.display = ''; document.getElementById('pair-drawer').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
     function closeDrawer() { document.getElementById('pair-drawer').style.display = 'none'; openPairId = null; }
     function renderDrawer() { if (!openPairId) return; var s = document.getElementById('drw-search').value.toLowerCase(), f = document.getElementById('drw-filter').value; var tb = document.getElementById('drw-tbody'); tb.innerHTML = ''; var sub = items.filter(function (i) { if (i.pairId !== openPairId) return false; if (f === 'active' && i.dropped) return false; if (f === 'dropped' && !i.dropped) return false; if (s && !i.code.toLowerCase().includes(s) && !i.name.toLowerCase().includes(s)) return false; return true; }); document.getElementById('drw-sub').textContent = sub.length + ' item' + (sub.length !== 1 ? 's' : ''); if (!sub.length) { tb.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:14px;color:#666;">No items</td></tr>'; return; } sub.forEach(function (i) { var tr = document.createElement('tr'); if (i.dropped) tr.style.opacity = '.45'; tr.innerHTML = '<td style="font-family:monospace;font-size:11px;">' + i.code + '</td><td>' + i.name + '</td><td>' + i.grp + '</td><td style="font-size:11px;">' + i.batch + '</td><td>' + i.uom + '</td><td style="font-family:monospace;font-size:11px;">' + i.bin + '</td><td><span class="badge ' + (i.dropped ? 'is-drop' : 'is-active') + '">' + (i.dropped ? 'Dropped' : 'Active') + '</span></td>'; tb.appendChild(tr); }); }
-    function openRepair(pid) { repairPairId = pid; repReplName = null; repReplInit = null; var p = pairs.find(function (x) { return x.id === pid; }); var absPerson = p.ca ? p.c : p.k, role = p.ca ? 'counter' : 'checker'; document.getElementById('rep-title').textContent = 'Replace ' + role + ' — Pair ' + pid; document.getElementById('rep-sub').textContent = absPerson + ' is absent. Select a replacement:'; document.getElementById('rep-confirm').disabled = true; var list = document.getElementById('rep-list'); list.innerHTML = ''; var repUsers = usersList.filter(function (u) { return u.name !== absPerson; }); if (!repUsers.length) { list.innerHTML = '<div style="font-size:12px;color:#666;padding:8px;">No users available. Import users first.</div>'; } repUsers.forEach(function (u) { var d = document.createElement('div'); d.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;border:.5px solid transparent;margin-bottom:4px;'; d.innerHTML = '<div class="av av-n">' + u.initials + '</div><div><div style="font-size:12px;font-weight:500;">' + u.name + '</div><div style="font-size:11px;color:#666;">Available</div></div>'; d.onclick = function () { document.querySelectorAll('#rep-list > div').forEach(function (x) { x.style.borderColor = 'transparent'; x.style.background = ''; }); d.style.borderColor = '#378ADD'; d.style.background = '#E3EFFE'; repReplName = u.name; repReplInit = u.initials; document.getElementById('rep-confirm').disabled = false; }; list.appendChild(d); }); document.getElementById('pair-drawer').style.display = 'none'; document.getElementById('repair-wrap').style.display = ''; }
-    function confirmRepair() { var p = pairs.find(function (x) { return x.id === repairPairId; }); if (p.ca) { p.c = repReplName; p.ci = repReplInit; p.ca = false; } else { p.k = repReplName; p.ki = repReplInit; p.ka = false; } document.getElementById('repair-wrap').style.display = 'none'; renderPairs(); renderItems(); }
+    function openRepair(pid) { repairPairId = pid; repReplName = null; repReplInit = null; var p = pairs.find(function (x) { return x.id === pid; }); var absPerson = p.ca ? p.c : p.k, role = p.ca ? 'counter' : 'checker'; document.getElementById('rep-title').textContent = 'Replace ' + role + ' — Pair ' + pid; document.getElementById('rep-sub').textContent = absPerson + ' is absent. Select a replacement:'; document.getElementById('rep-confirm').disabled = true; var list = document.getElementById('rep-list'); list.innerHTML = ''; var repUsers = usersList.filter(function (u) { return u.name !== absPerson; }); if (!repUsers.length) { list.innerHTML = '<div style="font-size:12px;color:#666;padding:8px;">No users available. Import users first.</div>'; } repUsers.forEach(function (u) { var d = document.createElement('div'); d.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;border:.5px solid transparent;margin-bottom:4px;'; d.innerHTML = '<div class="av av-n">' + u.initials + '</div><div><div style="font-size:12px;font-weight:500;">' + u.name + '</div><div style="font-size:11px;color:#666;">Available</div></div>'; d.onclick = function () { document.querySelectorAll('#rep-list > div').forEach(function (x) { x.style.borderColor = 'transparent'; x.style.background = ''; }); d.style.borderColor = '#1b3764'; d.style.background = '#e8f4fd'; repReplName = u.name; repReplInit = u.initials; document.getElementById('rep-confirm').disabled = false; }; list.appendChild(d); }); document.getElementById('pair-drawer').style.display = 'none'; document.getElementById('repair-wrap').style.display = ''; }
+    function confirmRepair() { var p = pairs.find(function (x) { return x.id === repairPairId; }); if (p.ca) { p.c = repReplName; p.ci = repReplInit; p.ca = false; } else { p.k = repReplName; p.ki = repReplInit; p.ka = false; } sb.from('pairs').update({ counter_name: p.c, checker_name: p.k, counter_absent: false, checker_absent: false }).eq('id', p.id).then(function (r) { if (r.error) alert('Failed to save replacement: ' + r.error.message); }); document.getElementById('repair-wrap').style.display = 'none'; renderPairs(); renderItems(); }
     function closeRepair() { document.getElementById('repair-wrap').style.display = 'none'; }
     function openEditBin(pid) { editBinPairId = pid; var p = pairs.find(function (x) { return x.id === pid; }); document.getElementById('ebin-title').textContent = 'Edit bin — Pair ' + pid; document.getElementById('ebin-sub').textContent = p.c + ' / ' + p.k; document.getElementById('ebin-sel').value = p.bin; document.getElementById('pair-drawer').style.display = 'none'; document.getElementById('editbin-wrap').style.display = ''; }
     function saveEditBin() { var p = pairs.find(function (x) { return x.id === editBinPairId; }); var v = document.getElementById('ebin-sel').value; if (v) p.bin = v; document.getElementById('editbin-wrap').style.display = 'none'; renderPairs(); }
     function closeEditBin() { document.getElementById('editbin-wrap').style.display = 'none'; }
+    function openEditPair(pid) { editPairId = pid; var p = pairs.find(function (x) { return x.id === pid; }); document.getElementById('epr-title').textContent = 'Edit Pair ' + pid; var assigned = new Set(); pairs.forEach(function (pr) { if (pr.id !== pid) { assigned.add(pr.c); assigned.add(pr.k); } }); var available = usersList.filter(function (u) { return !assigned.has(u.name); }); var opts = available.map(function (u) { return '<option>' + u.name + '</option>'; }).join(''); var cs = document.getElementById('epr-counter'), ks = document.getElementById('epr-checker'); cs.innerHTML = '<option value="">Select\u2026</option>' + opts; ks.innerHTML = '<option value="">Select\u2026</option>' + opts; cs.value = p.c; ks.value = p.k; document.getElementById('epr-save').disabled = false; document.getElementById('edit-pair-wrap').style.display = ''; }
+    function validateEditPair() { var ok = document.getElementById('epr-counter').value && document.getElementById('epr-checker').value; document.getElementById('epr-save').disabled = !ok; }
+    function saveEditPair() { var p = pairs.find(function (x) { return x.id === editPairId; }); var c = document.getElementById('epr-counter').value, k = document.getElementById('epr-checker').value; if (!c || !k) return; var ini = function (n) { return n.split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase(); }; p.c = c; p.ci = ini(c); p.ca = false; p.k = k; p.ki = ini(k); p.ka = false; sb.from('pairs').update({ counter_name: c, checker_name: k, counter_absent: false, checker_absent: false }).eq('id', editPairId).then(function (res) { if (res.error) alert('Failed to update pair: ' + res.error.message); }); document.getElementById('edit-pair-wrap').style.display = 'none'; crossCheckPairsAttendance(); }
+    function deletePair() { if (!confirm('Delete Pair ' + editPairId + '? This cannot be undone.')) return; pairs = pairs.filter(function (p) { return p.id !== editPairId; }); sb.from('pairs').delete().eq('id', editPairId).then(function (res) { if (res.error) alert('Failed to delete pair: ' + res.error.message); }); document.getElementById('edit-pair-wrap').style.display = 'none'; renderPairs(); }
+    function closeEditPair() { document.getElementById('edit-pair-wrap').style.display = 'none'; }
     function pairOpts() { return pairs.map(function (p) { return '<option value="' + p.id + '">' + p.id + ' — ' + p.c + '</option>'; }).join(''); }
     function populateItemFilters() { var grps = [], whs = [], entities = []; items.forEach(function (i) { if (i.grp && grps.indexOf(i.grp) === -1) grps.push(i.grp); var w = i.wh; if (w && whs.indexOf(w) === -1) whs.push(w); if (i.entity && entities.indexOf(i.entity) === -1) entities.push(i.entity); }); grps.sort(); whs.sort(); entities.sort(); var gs = document.getElementById('item-grp-filter'), ws = document.getElementById('item-wh-filter'), es = document.getElementById('item-entity-filter'); if (!gs) return; var cg = gs.value, cw = ws.value, ce = es.value; gs.innerHTML = '<option value="">All groups</option>' + grps.map(function (g) { return '<option>' + g + '</option>'; }).join(''); ws.innerHTML = '<option value="">All warehouses</option>' + whs.map(function (w) { return '<option>' + w + '</option>'; }).join(''); es.innerHTML = '<option value="">All entities</option>' + entities.map(function (e) { return '<option>' + e + '</option>'; }).join(''); if (cg) gs.value = cg; if (cw) ws.value = cw; if (ce) es.value = ce; }
-    function renderItems(filter, search) { filter = filter || document.getElementById('item-status-filter').value || 'all'; search = (typeof search === 'string' ? search : '').toLowerCase(); var grp = document.getElementById('item-grp-filter').value; var wh = document.getElementById('item-wh-filter').value; var entity = document.getElementById('item-entity-filter').value; var rc = isRC(); document.getElementById('col-pair').style.display = rc ? '' : 'none'; document.getElementById('col-src').style.display = rc ? '' : 'none'; var tb = document.getElementById('items-tbody'); tb.innerHTML = ''; items.filter(function (i) { var mf = filter === 'all' || (filter === 'active' && !i.dropped) || (filter === 'dropped' && i.dropped); var ms = !search || i.code.toLowerCase().includes(search) || i.name.toLowerCase().includes(search); var mg = !grp || i.grp === grp; var mw = !wh || i.wh === wh; var me = !entity || i.entity === entity; return mf && ms && mg && mw && me; }).forEach(function (item) { var tr = document.createElement('tr'); if (item.dropped) tr.style.opacity = '.45'; var pcell = rc ? '<td><select class="select" style="font-size:11px;padding:3px 7px;width:auto;" onchange="changeItemPair(\'' + item.id + '\',this.value)">' + pairOpts().replace('value="' + item.pairId + '"', 'value="' + item.pairId + '" selected') + '</select></td>' : ''; var srcCell = rc ? (item.src ? '<td><span class="badge ' + (item.src === 'new-item' ? 'b-purple' : 'b-warn') + '">' + (item.src === 'new-item' ? 'New item' : 'Variance') + '</span></td>' : '<td style="font-size:11px;color:#aaa;">—</td>') : ''; tr.innerHTML = '<td><input type="checkbox" data-id="' + item.id + '" onchange="updateSel()"/></td><td style="font-family:monospace;font-size:11px;">' + item.code + '</td><td>' + item.name + '</td><td>' + item.grp + '</td><td style="font-size:11px;">' + item.batch + '</td><td>' + item.uom + '</td>' + '<td style="font-size:11px;">' + (item.expiry || '\u2014') + '</td>' + '<td style="font-size:11px;">' + (item.category || '\u2014') + '</td>' + '<td>' + (item.sapStatus ? '<span class="badge ' + (item.sapStatus === 'Not found' ? 'b-danger' : item.sapStatus === 'Variance' ? 'b-warn' : 'b-success') + '">' + item.sapStatus + '</span>' : '<span style="color:#aaa;font-size:11px;">\u2014</span>') + '</td>' + pcell + srcCell + '<td><span class="badge ' + (item.dropped ? 'is-drop' : 'is-active') + '">' + (item.dropped ? 'Dropped' : 'Active') + '</span></td><td>' + (item.dropped ? '<button class="btn btn-sm rec-btn" onclick="toggleItem(\'' + item.id + '\')">Recover</button>' : '<button class="btn btn-sm drop-btn" onclick="toggleItem(\'' + item.id + '\')">Drop</button>') + '</td>'; tb.appendChild(tr); }); updateSel(); }
+    function renderItems(filter, search) { filter = filter || document.getElementById('item-status-filter').value || 'all'; search = (typeof search === 'string' ? search : '').toLowerCase(); var grp = document.getElementById('item-grp-filter').value; var wh = document.getElementById('item-wh-filter').value; var entity = document.getElementById('item-entity-filter').value; var rc = isRC(); document.getElementById('col-pair').style.display = rc ? '' : 'none'; document.getElementById('col-src').style.display = rc ? '' : 'none'; var sapBtn = document.getElementById('btn-import-sap'); if (sapBtn) sapBtn.style.display = rc ? 'none' : ''; var tb = document.getElementById('items-tbody'); tb.innerHTML = ''; var filtered = items.filter(function (i) { var mf = filter === 'all' || (filter === 'active' && !i.dropped) || (filter === 'dropped' && i.dropped); var ms = !search || i.code.toLowerCase().includes(search) || i.name.toLowerCase().includes(search); var mg = !grp || i.grp === grp; var mw = !wh || i.wh === wh; var me = !entity || i.entity === entity; return mf && ms && mg && mw && me; }); var subEl = document.getElementById('items-sub'); if (subEl) { subEl.textContent = 'Showing ' + filtered.length + ' of ' + items.length + ' items'; } var selAllBtn = document.getElementById('btn-sel-all'); if (selAllBtn) { selAllBtn.textContent = 'Select all ' + filtered.length; } filtered.forEach(function (item) { var tr = document.createElement('tr'); if (item.dropped) tr.style.opacity = '.45'; var pcell = rc ? '<td><select class="select" style="font-size:11px;padding:3px 7px;width:auto;" onchange="changeItemPair(\'' + item.id + '\',this.value)">' + pairOpts().replace('value="' + item.pairId + '"', 'value="' + item.pairId + '" selected') + '</select></td>' : ''; var srcCell = rc ? (item.src ? '<td><span class="badge ' + (item.src === 'new-item' ? 'b-purple' : 'b-warn') + '">' + (item.src === 'new-item' ? 'New item' : 'Variance') + '</span></td>' : '<td style="font-size:11px;color:#aaa;">—</td>') : ''; tr.innerHTML = '<td><input type="checkbox" data-id="' + item.id + '"' + (selItems.has(item.id) ? ' checked' : '') + ' onchange="updateSel()"/></td><td style="font-family:monospace;font-size:11px;">' + item.code + '</td><td>' + item.name + '</td><td>' + item.grp + '</td><td style="font-size:11px;">' + item.batch + '</td><td>' + item.uom + '</td>' + '<td style="font-size:11px;">' + (item.expiry || '\u2014') + '</td>' + '<td style="font-size:11px;">' + (item.category || '\u2014') + '</td>' + '<td>' + (item.sapStatus ? '<span class="badge ' + (item.sapStatus === 'Not found' ? 'b-danger' : item.sapStatus === 'Variance' ? 'b-warn' : 'b-success') + '">' + item.sapStatus + '</span>' : '<span style="color:#aaa;font-size:11px;">\u2014</span>') + '</td>' + pcell + srcCell + '<td><span class="badge ' + (item.dropped ? 'is-drop' : 'is-active') + '">' + (item.dropped ? 'Dropped' : 'Active') + '</span></td><td>' + (item.dropped ? '<button class="btn btn-sm rec-btn" onclick="toggleItem(\'' + item.id + '\')">Recover</button>' : '<button class="btn btn-sm drop-btn" onclick="toggleItem(\'' + item.id + '\')">Drop</button>') + '</td>'; tb.appendChild(tr); }); updateSel(); }
     function changeItemPair(id, pid) { var i = items.find(function (x) { return x.id === id; }); if (i) { i.pairId = pid; renderPairs(); } }
     function toggleItem(id) { var i = items.find(function (x) { return x.id === id; }); if (i) { i.dropped = !i.dropped; sb.from('items').update({ dropped: i.dropped }).eq('id', id).then(function () { }); } renderItems(); if (openPairId) renderDrawer(); }
     function filterItems(v) { renderItems(document.getElementById('item-status-filter').value, typeof v === 'string' ? v : ''); }
     function updateSel() { selItems.clear(); document.querySelectorAll('#items-tbody input[type=checkbox]:checked').forEach(function (cb) { selItems.add(cb.dataset.id); }); var bar = document.getElementById('bulk-bar'); bar.style.display = selItems.size ? 'flex' : 'none'; document.getElementById('sel-lbl').textContent = selItems.size + ' selected'; }
     function toggleAllItems(cb) { if (cb.checked) { document.querySelectorAll('#items-tbody input[type=checkbox]').forEach(function (c) { selItems.add(c.dataset.id); }); } else { selItems.clear(); } renderItems(); }
+    function selectAllFiltered() { document.querySelectorAll('#items-tbody input[type=checkbox]').forEach(function (c) { selItems.add(c.dataset.id); }); renderItems(); }
+    function clearSel() { selItems.clear(); renderItems(); }
     function bulkDrop() { selItems.forEach(function (id) { var i = items.find(function (x) { return x.id === id; }); if (i) i.dropped = true; }); selItems.clear(); renderItems(); }
     function bulkRecover() { selItems.forEach(function (id) { var i = items.find(function (x) { return x.id === id; }); if (i) i.dropped = false; }); selItems.clear(); renderItems(); }
     function buildReport() { var active = items.filter(function (i) { return !i.dropped; }); var matched = active.filter(function (i) { return i.cnt !== null && i.cnt === i.sap; }); var variance = active.filter(function (i) { return i.cnt !== null && i.cnt !== i.sap; }); var nf = active.filter(function (i) { return i.cnt === null; }); document.getElementById('rpt-total').textContent = active.length; document.getElementById('rpt-matched').textContent = matched.length; document.getElementById('rpt-var').textContent = variance.length; document.getElementById('rpt-nf').textContent = nf.length; var tb = document.getElementById('rpt-tbody'); tb.innerHTML = ''; active.forEach(function (item) { var v = item.cnt === null ? null : item.cnt - item.sap; var st = item.cnt === null ? 'Not found' : v === 0 ? 'Matched' : 'Variance'; var bc = st === 'Matched' ? 'b-success' : st === 'Variance' ? 'b-warn' : 'b-danger'; var vc = v !== null && v !== 0 ? 'color:#6b1212;' : 'color:#666;'; var tr = document.createElement('tr'); tr.innerHTML = '<td style="font-family:monospace;font-size:11px;">' + item.code + '</td><td>' + item.name + '</td><td>' + item.sap + '</td><td>' + (item.cnt === null ? '—' : item.cnt) + '</td><td style="' + vc + '">' + (v === null ? '—' : (v > 0 ? '+' : '') + v) + '</td><td><span class="badge ' + bc + '">' + st + '</span></td>'; tb.appendChild(tr); }); }
     function renderGallery() { var grid = document.getElementById('gallery-grid'); grid.innerHTML = ''; var icons = ['&#128230;', '&#128295;', '&#129524;']; newItems.forEach(function (n, i) { var sc = n.status === 'Approved' ? 'b-success' : n.status === 'Rejected' ? 'b-danger' : 'b-warn'; var d = document.createElement('div'); d.className = 'card'; d.innerHTML = '<div style="background:#f5f5f5;border-radius:6px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:10px;">' + icons[i % 3] + '</div><div style="font-size:13px;font-weight:500;margin-bottom:3px;">' + n.name + '</div><div style="font-size:11px;color:#666;margin-bottom:6px;">Qty: ' + n.qty + ' · Bin ' + n.bin + ' · ' + n.by + '</div><div style="margin-bottom:8px;"><span class="badge ' + sc + '">' + n.status + '</span></div><div style="display:flex;gap:5px;"><button class="btn btn-sm btn-success" style="flex:1;" onclick="setGalleryStatus(\'' + n.id + '\',\'Approved\')">Approve</button><button class="btn btn-sm btn-danger" style="flex:1;" onclick="setGalleryStatus(\'' + n.id + '\',\'Rejected\')">Reject</button><button class="btn btn-sm btn-primary">SAP ›</button></div>'; grid.appendChild(d); }); }
     function setGalleryStatus(id, st) { var n = newItems.find(function (x) { return x.id === id; }); if (n) n.status = st; renderGallery(); }
-    function toggleNSForm() { var f = document.getElementById('ns-form'); f.style.display = f.style.display === 'none' ? '' : 'none'; if (f.style.display === 'none') resetNSForm(); }
+    function toggleNSForm() { var f = document.getElementById('ns-modal-wrap'); f.style.display = f.style.display === 'none' ? '' : 'none'; if (f.style.display === 'none') resetNSForm(); }
     function onCountry() { var c = document.getElementById('ns-country').value, e = document.getElementById('ns-entity'); e.innerHTML = '<option value="">Select…</option>'; if (c === 'Malaysia') e.innerHTML += '<option>BMS</option><option>BMSD</option>'; else if (c === 'Singapore') e.innerHTML += '<option>BMSG</option>'; }
     function onRcToggle() { var ck = document.getElementById('ns-rc').checked; document.getElementById('ns-rc-box').style.display = ck ? '' : 'none'; if (ck) { var sel = document.getElementById('ns-parent'); sel.innerHTML = '<option value="">Select parent session…</option>'; S.filter(function (s) { return !s.rc && s.status !== 'Archived'; }).forEach(function (s) { sel.innerHTML += '<option value="' + s.id + '">' + s.id + ' — ' + s.name + '</option>'; }); } }
     function clearFerr(id) { var el = document.getElementById(id); if (el) el.classList.remove('err'); var er = document.getElementById(id + '-err'); if (er) er.style.display = 'none'; }
     function markFerr(id) { var el = document.getElementById(id); if (el) el.classList.add('err'); var er = document.getElementById(id + '-err'); if (er) er.style.display = ''; }
-    function createSession() { ['ns-name', 'ns-type', 'ns-country', 'ns-entity', 'ns-start', 'ns-end', 'ns-parent'].forEach(clearFerr); document.getElementById('ns-gen-err').style.display = 'none'; var n = document.getElementById('ns-name').value.trim(), t = document.getElementById('ns-type').value, co = document.getElementById('ns-country').value, en = document.getElementById('ns-entity').value, st = document.getElementById('ns-start').value, ed = document.getElementById('ns-end').value, rc = document.getElementById('ns-rc').checked, pid = rc ? document.getElementById('ns-parent').value : ''; var ok = true; if (!n) { markFerr('ns-name'); ok = false; } if (!t) { markFerr('ns-type'); ok = false; } if (!co) { markFerr('ns-country'); ok = false; } if (!en) { markFerr('ns-entity'); ok = false; } if (!st) { markFerr('ns-start'); ok = false; } if (!ed) { markFerr('ns-end'); ok = false; } if (rc && !pid) { markFerr('ns-parent'); ok = false; } if (!ok) { document.getElementById('ns-gen-err').style.display = ''; return; } var cc = co === 'Malaysia' ? 'MY' : 'SG', yr = st.slice(0, 4), tc = t === 'Year End' ? 'YE' : 'CC'; var newId = (rc ? 'RC' : tc) + yr + '-' + cc + '-' + (String(S.length + 1).padStart(3, '0')); S.push({ id: newId, name: n, type: t, entity: en, country: co, start: st, end: ed, status: 'Active', progress: 0, rc: rc, parentId: rc ? pid : null }); document.getElementById('ns-form').style.display = 'none'; resetNSForm(); renderSessTable(); sb.from('sessions').insert({ id: newId, name: n, type: t, entity: en, country: co, start_date: st, end_date: ed, status: 'Active', progress: 0, is_recount: rc, parent_id: rc ? pid : null }).then(function (res) { if (res.error) alert('Failed to save session: ' + res.error.message); }); }
+    function createSession() { ['ns-name', 'ns-type', 'ns-country', 'ns-entity', 'ns-start', 'ns-end', 'ns-parent'].forEach(clearFerr); document.getElementById('ns-gen-err').style.display = 'none'; var n = document.getElementById('ns-name').value.trim(), t = document.getElementById('ns-type').value, co = document.getElementById('ns-country').value, en = document.getElementById('ns-entity').value, st = document.getElementById('ns-start').value, ed = document.getElementById('ns-end').value, rc = document.getElementById('ns-rc').checked, pid = rc ? document.getElementById('ns-parent').value : ''; var ok = true; if (!n) { markFerr('ns-name'); ok = false; } if (!t) { markFerr('ns-type'); ok = false; } if (!co) { markFerr('ns-country'); ok = false; } if (!en) { markFerr('ns-entity'); ok = false; } if (!st) { markFerr('ns-start'); ok = false; } if (!ed) { markFerr('ns-end'); ok = false; } if (rc && !pid) { markFerr('ns-parent'); ok = false; } if (!ok) { document.getElementById('ns-gen-err').style.display = ''; return; } var cc = co === 'Malaysia' ? 'MY' : 'SG', yr = st.slice(0, 4), tc = t === 'Year End' ? 'YE' : 'CC'; var newId = (rc ? 'RC' : tc) + yr + '-' + cc + '-' + (String(S.length + 1).padStart(3, '0')); S.push({ id: newId, name: n, type: t, entity: en, country: co, start: st, end: ed, status: 'Active', progress: 0, rc: rc, parentId: rc ? pid : null }); document.getElementById('ns-modal-wrap').style.display = 'none'; resetNSForm(); renderSessTable(); sb.from('sessions').insert({ id: newId, name: n, type: t, entity: en, country: co, start_date: st, end_date: ed, status: 'Active', progress: 0, is_recount: rc, parent_id: rc ? pid : null }).then(function (res) { if (res.error) alert('Failed to save session: ' + res.error.message); }); }
     function resetNSForm() { ['ns-name', 'ns-start', 'ns-end'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; }); document.getElementById('ns-type').value = ''; document.getElementById('ns-country').value = ''; document.getElementById('ns-entity').innerHTML = '<option value="">Select…</option>'; document.getElementById('ns-rc').checked = false; document.getElementById('ns-rc-box').style.display = 'none';['ns-name', 'ns-type', 'ns-country', 'ns-entity', 'ns-start', 'ns-end', 'ns-parent'].forEach(clearFerr); document.getElementById('ns-gen-err').style.display = 'none'; }
     // ── Supabase client ────────────────────────────────────────────────────────
     var SUPABASE_URL = 'https://lyouqmjrzvcdevglunyc.supabase.co';
@@ -1158,6 +1200,7 @@
     var POWER_AUTOMATE_USERS_URL = 'https://defaulteda15da7404e41e9bb346a26118bd3.a3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1f27adcb562444e9b231a290f1ccd3ae/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=9pmYm1C2vco8xpHfXwxl752h1x2AP5bURkbSwbDBMwk';
     var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     var usersList = [];
+    var attendees = [];
 
     function mapItem(i) {
       var expRaw = i.expiry_date || i.expiry || null;
@@ -1193,13 +1236,17 @@
     }
 
     function loadItems() {
-      var q = sb.from('items').select('*').order('created_at', { ascending: false });
-      if (curSessId) q = q.eq('session_id', curSessId);
-      q.then(function (res) {
-        if (res.error) { console.error(res.error); renderItems(); buildReport(); return; }
-        items = (res.data || []).map(mapItem);
-        populateItemFilters(); renderItems(); buildReport();
-      });
+      if (!curSessId) { renderItems(); buildReport(); return; }
+      var allRows = [];
+      function fetchPage(from) {
+        sb.from('items').select('*').eq('session_id', curSessId).order('created_at', { ascending: false }).range(from, from + 999).then(function (res) {
+          if (res.error) { console.error(res.error); items = allRows.map(mapItem); populateItemFilters(); renderItems(); buildReport(); return; }
+          allRows = allRows.concat(res.data || []);
+          if (res.data && res.data.length === 1000) { fetchPage(from + 1000); }
+          else { items = allRows.map(mapItem); populateItemFilters(); renderItems(); buildReport(); }
+        });
+      }
+      fetchPage(0);
     }
 
     function loadBins() {
@@ -1238,6 +1285,7 @@
     function importUsers() {
       var btn = document.getElementById('btn-import-users');
       if (!POWER_AUTOMATE_USERS_URL || POWER_AUTOMATE_USERS_URL === 'YOUR_POWER_AUTOMATE_USERS_URL') { alert('Set POWER_AUTOMATE_USERS_URL in index.html'); return; }
+      if (!confirm('This will erase all existing users and reset all pair assignments. Attendance records for this session will also be cleared.\n\nProceed?')) { return; }
       btn.disabled = true; btn.textContent = 'Importing\u2026';
       fetch(POWER_AUTOMATE_USERS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: curSessId }) })
         .then(function (r) {
@@ -1281,6 +1329,7 @@
     function importFromSAP() {
       var btn = document.getElementById('btn-import-sap');
       if (!POWER_AUTOMATE_URL || POWER_AUTOMATE_URL === 'YOUR_POWER_AUTOMATE_URL') { alert('Set POWER_AUTOMATE_URL in index.html'); return; }
+      if (!confirm('This will erase all existing items for this session. Any count quantities, pair assignments, and drop status will be lost.\n\nProceed?')) { return; }
       btn.disabled = true; btn.textContent = 'Importing\u2026';
       fetch(POWER_AUTOMATE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: curSessId }) })
         .then(function (r) {
