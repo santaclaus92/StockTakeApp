@@ -1568,6 +1568,33 @@
       .topbar { display: none !important; }
       /* Hide Sessions button from mobile bottom nav */
       #mnav-sessions { display: none !important; }
+      /* Search row: only show input and multiscan, hide inline scan button */
+      #btn-scan { display: none !important; }
+      /* Fixed floating scan button at bottom center */
+      #btn-scan-fab {
+        display: flex !important;
+        position: fixed;
+        bottom: 72px; /* above mobile nav bar */
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 200;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        border-radius: 999px;
+        padding: 14px 32px;
+        font-size: 15px;
+        font-weight: 600;
+        font-family: var(--font-sans);
+        box-shadow: 0 6px 24px rgba(44,62,80,0.35);
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+    }
+    @media (min-width: 769px) {
+      #btn-scan-fab { display: none !important; }
     }
 
     /* ── Login overlay — mobile full-screen ── */
@@ -2295,6 +2322,16 @@
               <button class="btn" onclick="countSearch()">Search</button>
             </div>
 
+            <!-- Floating scan button (mobile only) -->
+            <button id="btn-scan-fab" onclick="startScanner()" style="display:none;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <rect x="2" y="2" width="6" height="6" rx="1"/><rect x="16" y="2" width="6" height="6" rx="1"/>
+                <rect x="2" y="16" width="6" height="6" rx="1"/><path d="M16 16h6M16 20h6M20 16v6"/>
+                <path d="M8 12H2M12 2v6M12 10v2M12 16v6M16 12h6"/>
+              </svg>
+              Scan Barcode
+            </button>
+
             <!-- No results -->
             <div id="cv-empty" style="display:none;text-align:center;padding:32px 0;">
               <div style="font-size:13px;color:var(--text-3);margin-bottom:14px;">No items matched your search.</div>
@@ -2356,7 +2393,7 @@
                 </div>
                 <div class="count-form-full">
                   <label class="flbl">Photos</label>
-                  <input type="file" id="cvd-photos" accept="image/*" multiple style="display:none;"
+                  <input type="file" id="cvd-photos" accept="image/*" multiple capture="environment" style="display:none;"
                     onchange="previewPhotos()" />
                   <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                     <button class="btn btn-sm" onclick="document.getElementById('cvd-photos').click()">&#128247; Add
@@ -3645,11 +3682,24 @@
       if (!countSessId) { showCountHome(); return; }
       var q = document.getElementById('cv-q').value.trim().toLowerCase();
       var sessEntity = (S.find(function(s){ return s.id === countSessId; }) || {}).entity || '';
-      var results = countItems.filter(function (i) {
-        var matchEntity = !sessEntity || !i.entity || i.entity === sessEntity;
-        var matchQ = !q || i.code.toLowerCase().includes(q) || i.name.toLowerCase().includes(q) || (i.batch && i.batch !== '—' && i.batch.toLowerCase().includes(q));
-        return matchEntity && matchQ;
+      var entityFilter = function(i) { return !sessEntity || !i.entity || i.entity === sessEntity; };
+
+      // 1. Exact code match (barcode scan lands here)
+      var exact = countItems.filter(function(i) {
+        return entityFilter(i) && i.code.toLowerCase() === q;
       });
+      if (exact.length) {
+        if (exact.length === 1) { openCountDetail(exact[0].id); return; }
+        var results = exact;
+      } else {
+        // 2. Starts-with on code, then contains on name / batch
+        var results = !q ? [] : countItems.filter(function (i) {
+          if (!entityFilter(i)) return false;
+          return i.code.toLowerCase().startsWith(q) ||
+                 i.name.toLowerCase().includes(q) ||
+                 (i.batch && i.batch !== '—' && i.batch.toLowerCase() === q);
+        });
+      }
       var gallery = document.getElementById('cv-gallery-view');
       var empty = document.getElementById('cv-empty');
       if (!q) { gallery.style.display = 'none'; empty.style.display = 'none'; return; }
