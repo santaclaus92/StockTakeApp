@@ -2359,7 +2359,7 @@
               <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:14px;">Count Input</div>
               <div class="count-form-grid">
                 <div>
-                  <label class="flbl">Bin Location</label>
+                  <label class="flbl req">Bin Location</label>
                   <div id="cvd-bin-combo" style="position:relative;">
                     <div style="display:flex;align-items:stretch;border:1px solid var(--border);border-radius:var(--radius);background:#fff;overflow:hidden;">
                       <input id="cvd-bin-input" type="text" autocomplete="off" placeholder="Search or type bin…"
@@ -3793,7 +3793,24 @@
       var btn = document.getElementById('cvd-save-btn');
 
       var binVal = binComboGetValue() || null;
-      var cntVal = document.getElementById('cvd-cnt').value !== '' ? +document.getElementById('cvd-cnt').value : null;
+      var cntRaw = document.getElementById('cvd-cnt').value;
+      var cntVal = cntRaw !== '' ? +cntRaw : null;
+
+      // Validate required fields
+      var msg = document.getElementById('cvd-msg');
+      if (!binVal && cntVal === null) {
+        msg.className = 'banner bn-danger'; msg.textContent = 'Bin location and count qty are required.'; msg.style.display = '';
+        return;
+      }
+      if (!binVal) {
+        msg.className = 'banner bn-danger'; msg.textContent = 'Bin location is required.'; msg.style.display = '';
+        return;
+      }
+      if (cntVal === null) {
+        msg.className = 'banner bn-danger'; msg.textContent = 'Count qty is required.'; msg.style.display = '';
+        return;
+      }
+      msg.style.display = 'none';
 
       // Accumulate count qty
       var prevCnt = (item.cnt !== null && item.cnt !== undefined) ? +item.cnt : 0;
