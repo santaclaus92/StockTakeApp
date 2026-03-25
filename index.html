@@ -209,8 +209,8 @@
       align-items: center;
       font-size: 10px;
       font-weight: 500;
-      padding: 2px 8px;
-      border-radius: 3px;
+      padding: 2px 9px;
+      border-radius: 999px;
       letter-spacing: 0.01em;
     }
 
@@ -788,13 +788,13 @@
        ITEM STATUS BADGES
     ───────────────────────────────────────────────────────────────── */
     .is-active {
-      background: #EAF5EE;
-      color: #1A6B3A;
+      background: #22c55e;
+      color: #fff;
     }
 
     .is-drop {
-      background: #F4F4F4;
-      color: #717171;
+      background: #9ca3af;
+      color: #fff;
     }
 
     .drop-btn {
@@ -1570,6 +1570,20 @@
       #mnav-sessions { display: none !important; }
       /* Search row: only show input and multiscan, hide inline scan button */
       #btn-scan { display: none !important; }
+      /* Sub-tab bar: horizontal scroll so all tabs are reachable */
+      .stab-bar {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+        scrollbar-width: none;
+      }
+      .stab-bar::-webkit-scrollbar { display: none; }
+      .stab { white-space: nowrap; flex-shrink: 0; }
+      /* Tab content areas: allow vertical scroll, prevent horizontal overflow */
+      .stab-content { overflow-x: hidden; overflow-y: auto; }
+      /* Prevent any wide children from breaking layout */
+      .content { overflow-x: hidden; }
+      .page { overflow-x: hidden; }
       /* Fixed floating scan button at bottom center */
       #btn-scan-fab {
         display: flex !important;
@@ -1610,6 +1624,117 @@
         box-shadow: 0 -8px 40px rgba(0,0,0,0.2) !important;
       }
     }
+
+    /* ─────────────────────────────────────────────────────────────────
+       CAL.COM-STYLE DATE PICKER
+    ───────────────────────────────────────────────────────────────── */
+    /* ─── Cal.com-style date picker trigger ─── */
+    .cal-pick-wrap { position: relative; }
+    .cal-pick-trigger {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 11px; border: 0.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-card); cursor: pointer; font-size: 13px; color: var(--text);
+      min-height: 36px; transition: border-color 0.15s; user-select: none; gap: 8px;
+    }
+    .cal-pick-trigger:hover { border-color: var(--primary); }
+    .cal-pick-trigger.err { border-color: #D94040 !important; }
+    .cal-pick-trigger .cal-disp { flex: 1; }
+    .cal-pick-trigger .cal-disp.placeholder { color: var(--text-3); }
+    .cal-pick-trigger svg { flex-shrink: 0; color: var(--text-3); }
+
+    /* ─── Cal popup: position:fixed so it escapes modal overflow clipping ─── */
+    .cal-popup {
+      position: fixed; z-index: 9999;
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.07), 0 10px 32px -4px rgba(0,0,0,0.12);
+      padding: 16px; width: 288px;
+      display: none;
+    }
+    .cal-popup.open { display: block; animation: calIn 0.13s cubic-bezier(.16,1,.3,1); }
+    @keyframes calIn { from { opacity:0; transform:translateY(-6px) scale(0.98); } to { opacity:1; transform:translateY(0) scale(1); } }
+
+    /* Navigation header */
+    .cal-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px; height: 36px;
+    }
+    .cal-nav-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 8px; border: 1px solid #e2e8f0;
+      background: #fff; cursor: pointer; color: #64748b; transition: background 0.1s, border-color 0.1s;
+      flex-shrink: 0;
+    }
+    .cal-nav-btn:hover { background: #f8fafc; border-color: #cbd5e1; }
+    .cal-nav-btn svg { width: 15px; height: 15px; }
+    .cal-month-lbl { font-size: 14px; font-weight: 600; color: #0f172a; }
+
+    /* Weekday labels + day grid: 7 equal columns of 36px */
+    .cal-wdays, .cal-days-grid {
+      display: grid; grid-template-columns: repeat(7, 36px);
+    }
+    .cal-wdays { margin-bottom: 4px; }
+    .cal-wday {
+      width: 36px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 500; color: #94a3b8;
+    }
+    .cal-days-grid { gap: 0; }
+    .cal-day-btn {
+      position: relative; display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 8px; border: none; background: transparent;
+      cursor: pointer; font-size: 13px; color: #0f172a; font-family: var(--font-sans);
+      transition: background 0.1s; padding: 0;
+    }
+    .cal-day-btn:hover:not(.cal-selected) { background: #f1f5f9; }
+    .cal-day-btn.cal-outside { color: #94a3b8; opacity: 0.5; }
+    .cal-day-btn.cal-selected {
+      background: var(--primary); color: #fff; font-weight: 600; border-radius: 8px;
+    }
+    .cal-day-btn.cal-today::after {
+      content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+      width: 3px; height: 3px; border-radius: 50%; background: var(--primary);
+    }
+    .cal-day-btn.cal-selected.cal-today::after { background: rgba(255,255,255,0.8); }
+
+    /* ─────────────────────────────────────────────────────────────────
+       RUIXEN-STYLE TABLE COLUMN TOGGLE
+    ───────────────────────────────────────────────────────────────── */
+    .col-toggle-wrap { position: relative; }
+    .col-toggle-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border: 0.5px solid var(--border); border-radius: 6px;
+      background: var(--bg-card); cursor: pointer; font-size: 11px; font-weight: 500;
+      color: var(--text-2); font-family: var(--font-sans); transition: border-color 0.15s;
+      white-space: nowrap;
+    }
+    .col-toggle-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .col-toggle-menu {
+      position: absolute; top: calc(100% + 4px); right: 0;
+      background: var(--bg-card); border: 0.5px solid var(--border); border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 4px 0; min-width: 190px;
+      z-index: 400; display: none;
+    }
+    .col-toggle-menu.open { display: block; }
+    .col-toggle-item {
+      display: flex; align-items: center; gap: 9px; padding: 7px 14px;
+      font-size: 12px; color: var(--text); cursor: pointer;
+    }
+    .col-toggle-item:hover { background: #f8fafc; }
+    .col-toggle-item input[type=checkbox] { cursor: pointer; accent-color: var(--primary); }
+
+    /* ─── Item action toast ─── */
+    #item-toast {
+      position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%);
+      display: none; z-index: 10000; white-space: nowrap;
+      font-size: 13px; font-weight: 500; font-family: var(--font-sans);
+      padding: 10px 22px; border-radius: 999px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+      animation: toastIn 0.18s ease;
+    }
+    @keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(8px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+    #item-toast.t-success { background:#22c55e; color:#fff; }
+    #item-toast.t-warn    { background:#f59e0b; color:#fff; }
+    #item-toast.t-error   { background:#ef4444; color:#fff; }
   </style>
 </head>
 
@@ -1732,10 +1857,44 @@
                   </div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-                  <div><label class="flbl req">Start date</label><input class="input" id="ns-start" type="date" />
+                  <div>
+                    <label class="flbl req">Start date</label>
+                    <div class="cal-pick-wrap" id="calpick-ns-start">
+                      <input type="hidden" id="ns-start">
+                      <div class="cal-pick-trigger" id="caltrig-ns-start" onclick="toggleCalPicker('ns-start')">
+                        <span class="cal-disp placeholder" id="caldisp-ns-start">Select date…</span>
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2.5" width="13" height="12" rx="1.5"/><path d="M5 1v3M11 1v3M1.5 6.5h13"/></svg>
+                      </div>
+                      <div class="cal-popup" id="calpop-ns-start">
+                        <div class="cal-hdr">
+                          <button class="cal-nav-btn" onclick="calNav('ns-start',-1);event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+                          <span class="cal-month-lbl" id="calmon-ns-start"></span>
+                          <button class="cal-nav-btn" onclick="calNav('ns-start',1);event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+                        </div>
+                        <div class="cal-wdays"><div class="cal-wday">Su</div><div class="cal-wday">Mo</div><div class="cal-wday">Tu</div><div class="cal-wday">We</div><div class="cal-wday">Th</div><div class="cal-wday">Fr</div><div class="cal-wday">Sa</div></div>
+                        <div class="cal-days-grid" id="calgrid-ns-start"></div>
+                      </div>
+                    </div>
                     <div class="ferr" id="ns-start-err">Required</div>
                   </div>
-                  <div><label class="flbl req">End date</label><input class="input" id="ns-end" type="date" />
+                  <div>
+                    <label class="flbl req">End date</label>
+                    <div class="cal-pick-wrap" id="calpick-ns-end">
+                      <input type="hidden" id="ns-end">
+                      <div class="cal-pick-trigger" id="caltrig-ns-end" onclick="toggleCalPicker('ns-end')">
+                        <span class="cal-disp placeholder" id="caldisp-ns-end">Select date…</span>
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2.5" width="13" height="12" rx="1.5"/><path d="M5 1v3M11 1v3M1.5 6.5h13"/></svg>
+                      </div>
+                      <div class="cal-popup" id="calpop-ns-end">
+                        <div class="cal-hdr">
+                          <button class="cal-nav-btn" onclick="calNav('ns-end',-1);event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+                          <span class="cal-month-lbl" id="calmon-ns-end"></span>
+                          <button class="cal-nav-btn" onclick="calNav('ns-end',1);event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+                        </div>
+                        <div class="cal-wdays"><div class="cal-wday">Su</div><div class="cal-wday">Mo</div><div class="cal-wday">Tu</div><div class="cal-wday">We</div><div class="cal-wday">Th</div><div class="cal-wday">Fr</div><div class="cal-wday">Sa</div></div>
+                        <div class="cal-days-grid" id="calgrid-ns-end"></div>
+                      </div>
+                    </div>
                     <div class="ferr" id="ns-end-err">Required</div>
                   </div>
                 </div>
@@ -1800,10 +1959,44 @@
                   </div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-                  <div><label class="flbl req">Start date</label><input class="input" id="es-start" type="date" />
+                  <div>
+                    <label class="flbl req">Start date</label>
+                    <div class="cal-pick-wrap" id="calpick-es-start">
+                      <input type="hidden" id="es-start">
+                      <div class="cal-pick-trigger" id="caltrig-es-start" onclick="toggleCalPicker('es-start')">
+                        <span class="cal-disp placeholder" id="caldisp-es-start">Select date…</span>
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2.5" width="13" height="12" rx="1.5"/><path d="M5 1v3M11 1v3M1.5 6.5h13"/></svg>
+                      </div>
+                      <div class="cal-popup" id="calpop-es-start">
+                        <div class="cal-hdr">
+                          <button class="cal-nav-btn" onclick="calNav('es-start',-1);event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+                          <span class="cal-month-lbl" id="calmon-es-start"></span>
+                          <button class="cal-nav-btn" onclick="calNav('es-start',1);event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+                        </div>
+                        <div class="cal-wdays"><div class="cal-wday">Su</div><div class="cal-wday">Mo</div><div class="cal-wday">Tu</div><div class="cal-wday">We</div><div class="cal-wday">Th</div><div class="cal-wday">Fr</div><div class="cal-wday">Sa</div></div>
+                        <div class="cal-days-grid" id="calgrid-es-start"></div>
+                      </div>
+                    </div>
                     <div class="ferr" id="es-start-err">Required</div>
                   </div>
-                  <div><label class="flbl req">End date</label><input class="input" id="es-end" type="date" />
+                  <div>
+                    <label class="flbl req">End date</label>
+                    <div class="cal-pick-wrap" id="calpick-es-end">
+                      <input type="hidden" id="es-end">
+                      <div class="cal-pick-trigger" id="caltrig-es-end" onclick="toggleCalPicker('es-end')">
+                        <span class="cal-disp placeholder" id="caldisp-es-end">Select date…</span>
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2.5" width="13" height="12" rx="1.5"/><path d="M5 1v3M11 1v3M1.5 6.5h13"/></svg>
+                      </div>
+                      <div class="cal-popup" id="calpop-es-end">
+                        <div class="cal-hdr">
+                          <button class="cal-nav-btn" onclick="calNav('es-end',-1);event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+                          <span class="cal-month-lbl" id="calmon-es-end"></span>
+                          <button class="cal-nav-btn" onclick="calNav('es-end',1);event.stopPropagation()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+                        </div>
+                        <div class="cal-wdays"><div class="cal-wday">Su</div><div class="cal-wday">Mo</div><div class="cal-wday">Tu</div><div class="cal-wday">We</div><div class="cal-wday">Th</div><div class="cal-wday">Fr</div><div class="cal-wday">Sa</div></div>
+                        <div class="cal-days-grid" id="calgrid-es-end"></div>
+                      </div>
+                    </div>
                     <div class="ferr" id="es-end-err">Required</div>
                   </div>
                 </div>
@@ -1995,30 +2188,47 @@
               </div><button class="btn btn-primary btn-sm" id="btn-import-sap" onclick="importFromSAP()">&#8593; Import
                 from SAP</button>
             </div>
-            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
-              <input class="input" placeholder="Search code or name…" style="flex:1;min-width:150px;"
-                oninput="filterItems(this.value)" />
-              <select class="select" style="width:auto;" id="item-status-filter" onchange="filterItems()">
-                <option value="all">All items</option>
-                <option value="active">Active</option>
-                <option value="dropped">Dropped</option>
-              </select>
-              <select class="select" style="width:auto;" id="item-grp-filter" onchange="filterItems()">
-                <option value="">All groups</option>
-              </select>
-              <select class="select" style="width:auto;" id="item-wh-filter" onchange="filterItems()">
-                <option value="">All warehouses</option>
-              </select>
-
-              <button class="btn btn-sm" id="btn-sel-all" onclick="selectAllFiltered()">Select all</button>
-            </div>
-            <div id="bulk-bar" style="display:none;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
-              <span style="font-size:11px;color:#666;" id="sel-lbl">0 selected</span>
-              <button class="btn btn-sm drop-btn" onclick="bulkDrop()">Drop selected</button>
-              <button class="btn btn-sm rec-btn" onclick="bulkRecover()">Recover selected</button>
-              <button class="btn btn-sm" onclick="clearSel()">Clear</button>
-            </div>
             <div class="card" style="padding:0;overflow:hidden;">
+              <!-- Ruixen-style toolbar inside card -->
+              <div style="padding:10px 14px;border-bottom:0.5px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <input class="input" placeholder="Search code or name…" style="flex:1;min-width:150px;"
+                  oninput="filterItems(this.value)" />
+                <select class="select" style="width:auto;" id="item-status-filter" onchange="filterItems()">
+                  <option value="all">All items</option>
+                  <option value="active">Active</option>
+                  <option value="dropped">Dropped</option>
+                </select>
+                <select class="select" style="width:auto;" id="item-grp-filter" onchange="filterItems()">
+                  <option value="">All groups</option>
+                </select>
+                <select class="select" style="width:auto;" id="item-wh-filter" onchange="filterItems()">
+                  <option value="">All warehouses</option>
+                </select>
+                <button class="btn btn-sm" id="btn-sel-all" onclick="selectAllFiltered()">Select all</button>
+                <div class="col-toggle-wrap">
+                  <button class="col-toggle-btn" onclick="toggleColMenu('items-col-menu')">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5.5"/><path d="M8 5.5v5M5.5 8h5"/></svg>
+                    Columns
+                  </button>
+                  <div class="col-toggle-menu" id="items-col-menu">
+                    <label class="col-toggle-item"><input type="checkbox" checked onchange="toggleItemCol('col-batch',this.checked)"> Batch</label>
+                    <label class="col-toggle-item"><input type="checkbox" checked onchange="toggleItemCol('col-uom',this.checked)"> UoM</label>
+                    <label class="col-toggle-item"><input type="checkbox" checked onchange="toggleItemCol('col-pkg',this.checked)"> Packaging Size</label>
+                    <label class="col-toggle-item"><input type="checkbox" checked onchange="toggleItemCol('col-expiry',this.checked)"> Expiry</label>
+                    <label class="col-toggle-item"><input type="checkbox" checked onchange="toggleItemCol('col-category',this.checked)"> Category</label>
+                    <label class="col-toggle-item"><input type="checkbox" checked onchange="toggleItemCol('col-dmg',this.checked)"> Damaged Qty</label>
+                    <label class="col-toggle-item"><input type="checkbox" checked onchange="toggleItemCol('col-exp',this.checked)"> Expired Qty</label>
+                    <label class="col-toggle-item"><input type="checkbox" checked onchange="toggleItemCol('col-by',this.checked)"> Counted By</label>
+                    <label class="col-toggle-item"><input type="checkbox" checked onchange="toggleItemCol('col-photos',this.checked)"> Photos</label>
+                  </div>
+                </div>
+              </div>
+              <div id="bulk-bar" style="display:none;padding:7px 14px;border-bottom:0.5px solid var(--border);gap:8px;align-items:center;flex-wrap:wrap;">
+                <span style="font-size:11px;color:#666;" id="sel-lbl">0 selected</span>
+                <button class="btn btn-sm drop-btn" onclick="bulkDrop()">Drop selected</button>
+                <button class="btn btn-sm rec-btn" onclick="bulkRecover()">Recover selected</button>
+                <button class="btn btn-sm" onclick="clearSel()">Clear</button>
+              </div>
               <table class="tbl" id="items-table">
                 <thead>
                   <tr>
@@ -2026,18 +2236,18 @@
                     <th>Item code</th>
                     <th>Item name</th>
                     <th>Group</th>
-                    <th>Batch</th>
-                    <th>UoM</th>
-                    <th>Packaging Size</th>
-                    <th>Expiry</th>
-                    <th>Category</th>
+                    <th data-col="col-batch">Batch</th>
+                    <th data-col="col-uom">UoM</th>
+                    <th data-col="col-pkg">Packaging Size</th>
+                    <th data-col="col-expiry">Expiry</th>
+                    <th data-col="col-category">Category</th>
                     <th>SAP Qty</th>
                     <th>Counted Qty</th>
-                    <th>Damaged Qty</th>
-                    <th>Expired Qty</th>
-                    <th>Counted By</th>
+                    <th data-col="col-dmg">Damaged Qty</th>
+                    <th data-col="col-exp">Expired Qty</th>
+                    <th data-col="col-by">Counted By</th>
                     <th>Warehouse Location</th>
-                    <th>Photos</th>
+                    <th data-col="col-photos">Photos</th>
                     <th id="col-pair" style="display:none;">Assigned to pair</th>
                     <th id="col-src" style="display:none;">Source</th>
                     <th>Status</th>
@@ -2220,31 +2430,33 @@
               </div>
               <button class="btn btn-sm" onclick="loadAudit()">&#8635; Refresh</button>
             </div>
-            <div id="audit-banner" style="display:none;" class="banner bn-info"></div>
-            <div style="overflow-x:auto;">
-              <table class="table" id="audit-table" style="display:none;">
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Item Code</th>
-                    <th>Item Name</th>
-                    <th>Submitted by</th>
-                    <th>Count Qty</th>
-                    <th>Damaged</th>
-                    <th>Expired</th>
-                    <th>Warehouse</th>
-                    <th>Remark</th>
-                  </tr>
-                </thead>
-                <tbody id="audit-tbody"></tbody>
-              </table>
+            <div id="audit-banner" style="display:none;margin-bottom:10px;" class="banner bn-info"></div>
+            <div class="card" style="padding:0;overflow:hidden;">
+              <div style="overflow-x:auto;">
+                <table class="tbl" id="audit-table" style="display:none;">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Item Code</th>
+                      <th>Item Name</th>
+                      <th>Submitted by</th>
+                      <th>Count Qty</th>
+                      <th>Damaged</th>
+                      <th>Expired</th>
+                      <th>Warehouse</th>
+                      <th>Remark</th>
+                    </tr>
+                  </thead>
+                  <tbody id="audit-tbody"></tbody>
+                </table>
+              </div>
             </div>
           </div>
 
           <!-- Dashboard drill-down modal -->
           <div id="drilldown-wrap" style="display:none;">
             <div class="overlay" onclick="closeDrilldown()">
-              <div class="modal" style="max-width:700px;max-height:78vh;display:flex;flex-direction:column;"
+              <div class="modal" style="max-width:90vw;width:90vw;max-height:90vh;height:90vh;display:flex;flex-direction:column;"
                 onclick="event.stopPropagation()">
                 <div
                   style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">
@@ -2851,10 +3063,30 @@
         var tr = document.createElement('tr'); if (item.dropped) tr.style.opacity = '.45'; var pcell = rc ? '<td><select class="select" style="font-size:11px;padding:3px 7px;width:auto;" onchange="changeItemPair(\'' + item.id + '\',this.value)">' + pairOpts().replace('value="' + item.pairId + '"', 'value="' + item.pairId + '" selected') + '</select></td>' : ''; var srcCell = rc ? (item.src ? '<td><span class="badge ' + (item.src === 'new-item' ? 'b-purple' : 'b-warn') + '">' + (item.src === 'new-item' ? 'New item' : 'Variance') + '</span></td>' : '<td style="font-size:11px;color:#aaa;">—</td>') : ''; var pairName = item.pairId ? (function () { var p = pairs.find(function (x) { return x.id === item.pairId; }); return p ? p.c + ' / ' + p.k : item.pairId; })() : '\u2014';
         var photoBtn = item.photos && item.photos.length ? '<button class="photo-link-btn" onclick="openPhotoGallery(\'' + item.id + '\')">&#128247; ' + item.photos.length + '</button>' : '<span style="color:#aaa;font-size:11px;">\u2014</span>';
         tr.innerHTML = '<td><input type="checkbox" data-id="' + item.id + '"' + (selItems.has(item.id) ? ' checked' : '') + ' onclick="rowCheckClick(event,this)"/></td><td style="font-family:monospace;font-size:11px;">' + item.code + '</td><td>' + item.name + '</td><td>' + item.grp + '</td><td style="font-size:11px;">' + item.batch + '</td><td>' + item.uom + '</td>' + '<td style="font-size:11px;">' + (item.pkg || '\u2014') + '</td>' + '<td style="font-size:11px;">' + (item.expiry || '\u2014') + '</td>' + '<td style="font-size:11px;">' + (item.category || '\u2014') + '</td>' + '<td style="font-family:monospace;">' + item.sap + '</td>' + '<td>' + (item.cnt !== null && item.cnt !== undefined ? '<span class="qty-counted">' + item.cnt + '</span>' : '<span class="qty-null">—</span>') + '</td>' + '<td>' + (item.dmg !== null && item.dmg !== undefined ? '<span class="qty-dmg">' + item.dmg + '</span>' : '<span class="qty-null">—</span>') + '</td>' + '<td>' + (item.expQty !== null && item.expQty !== undefined ? '<span class="qty-exp">' + item.expQty + '</span>' : '<span class="qty-null">—</span>') + '</td>' + '<td style="font-size:11px;">' + pairName + '</td>' + '<td style="font-family:monospace;font-size:11px;">' + item.warehouse + '</td>' + '<td>' + photoBtn + '</td>' + pcell + srcCell + '<td><span class="badge ' + (item.dropped ? 'is-drop' : 'is-active') + '">' + (item.dropped ? 'Dropped' : 'Active') + '</span></td><td>' + (item.dropped ? '<button class="btn btn-sm rec-btn" onclick="toggleItem(\'' + item.id + '\')">Recover</button>' : '<button class="btn btn-sm drop-btn" onclick="toggleItem(\'' + item.id + '\')">Drop</button>') + '</td>'; tb.appendChild(tr);
-      }); updateSel();
+      }); updateSel(); applyItemColVisibility();
     }
     function changeItemPair(id, pid) { var i = items.find(function (x) { return x.id === id; }); if (i) { i.pairId = pid; renderPairs(); } }
-    function toggleItem(id) { var i = items.find(function (x) { return x.id === id; }); if (i) { i.dropped = !i.dropped; sb.from('items').update({ dropped: i.dropped }).eq('id', id).then(function () { }); } renderItems(); if (openPairId) renderDrawer(); }
+    function showItemToast(msg, type) {
+      var t = document.getElementById('item-toast');
+      if (!t) return;
+      t.textContent = msg;
+      t.className = 't-' + (type || 'success');
+      t.style.display = 'block';
+      clearTimeout(t._tid);
+      t._tid = setTimeout(function () { t.style.display = 'none'; }, 4000);
+    }
+    function toggleItem(id) {
+      var i = items.find(function (x) { return x.id === id; });
+      if (i) {
+        i.dropped = !i.dropped;
+        var action = i.dropped ? 'dropped' : 'recovered';
+        sb.from('items').update({ dropped: i.dropped }).eq('id', id).then(function (res) {
+          if (res.error) { showItemToast('Sync failed: ' + res.error.message, 'error'); }
+          else { showItemToast('1 item ' + action, 'success'); }
+        });
+      }
+      renderItems(); if (openPairId) renderDrawer();
+    }
     function filterItems(v) { renderItems(document.getElementById('item-status-filter').value, typeof v === 'string' ? v : ''); }
     function rowCheckClick(e, cb) {
       var boxes = Array.from(document.querySelectorAll('#items-tbody input[type=checkbox]'));
@@ -2872,8 +3104,30 @@
     function toggleAllItems(cb) { if (cb.checked) { document.querySelectorAll('#items-tbody input[type=checkbox]').forEach(function (c) { selItems.add(c.dataset.id); }); } else { selItems.clear(); } renderItems(); }
     function selectAllFiltered() { document.querySelectorAll('#items-tbody input[type=checkbox]').forEach(function (c) { selItems.add(c.dataset.id); }); renderItems(); }
     function clearSel() { selItems.clear(); renderItems(); }
-    function bulkDrop() { selItems.forEach(function (id) { var i = items.find(function (x) { return x.id === id; }); if (i) i.dropped = true; }); selItems.clear(); renderItems(); }
-    function bulkRecover() { selItems.forEach(function (id) { var i = items.find(function (x) { return x.id === id; }); if (i) i.dropped = false; }); selItems.clear(); renderItems(); }
+    function bulkDrop() {
+      var ids = Array.from(selItems); var count = ids.length;
+      if (!count) return;
+      ids.forEach(function (id) { var i = items.find(function (x) { return x.id === id; }); if (i) i.dropped = true; });
+      selItems.clear(); renderItems();
+      Promise.all(ids.map(function (id) { return sb.from('items').update({ dropped: true }).eq('id', id); }))
+        .then(function (results) {
+          var err = results.find(function (r) { return r.error; });
+          if (err) { showItemToast('Sync failed: ' + err.error.message, 'error'); }
+          else { showItemToast(count + ' item' + (count === 1 ? '' : 's') + ' dropped', 'success'); }
+        });
+    }
+    function bulkRecover() {
+      var ids = Array.from(selItems); var count = ids.length;
+      if (!count) return;
+      ids.forEach(function (id) { var i = items.find(function (x) { return x.id === id; }); if (i) i.dropped = false; });
+      selItems.clear(); renderItems();
+      Promise.all(ids.map(function (id) { return sb.from('items').update({ dropped: false }).eq('id', id); }))
+        .then(function (results) {
+          var err = results.find(function (r) { return r.error; });
+          if (err) { showItemToast('Sync failed: ' + err.error.message, 'error'); }
+          else { showItemToast(count + ' item' + (count === 1 ? '' : 's') + ' recovered', 'success'); }
+        });
+    }
     function buildDashboard() {
       var entity = cs() ? cs().entity : '';
       var active = items.filter(function (i) { return !i.dropped && (!entity || i.entity === entity); });
@@ -2941,6 +3195,12 @@
       var label = key === '—' ? 'Unassigned' : key;
       var typeLabel = type === 'group' ? 'Item Group' : 'Warehouse';
       document.getElementById('drilldown-title').textContent = typeLabel + ' — ' + label + ' (' + filtered.length + ' items)';
+      filtered = filtered.slice().sort(function (a, b) {
+        var aCounted = a.cnt !== null && a.cnt !== undefined && a.cnt !== '';
+        var bCounted = b.cnt !== null && b.cnt !== undefined && b.cnt !== '';
+        if (aCounted !== bCounted) return aCounted ? 1 : -1; // not counted first
+        return (a.name || '').localeCompare(b.name || '');
+      });
       var rows = filtered.map(function (i) {
         var hasCnt = i.cnt !== null && i.cnt !== undefined && i.cnt !== '';
         var hasVar = hasCnt && i.variance && Math.abs(parseFloat(i.variance)) > 0;
@@ -2978,8 +3238,8 @@
       document.getElementById('es-country').value = s.country;
       onEditCountry();
       document.getElementById('es-entity').value = s.entity;
-      document.getElementById('es-start').value = s.start;
-      document.getElementById('es-end').value = s.end;
+      setCalPickerVal('es-start', s.start);
+      setCalPickerVal('es-end', s.end);
       ['es-name', 'es-type', 'es-country', 'es-entity', 'es-start', 'es-end'].forEach(clearFerr);
       document.getElementById('es-gen-err').style.display = 'none';
       document.getElementById('es-modal-wrap').style.display = '';
@@ -3071,10 +3331,10 @@
 
     function onCountry() { var c = document.getElementById('ns-country').value, e = document.getElementById('ns-entity'); e.innerHTML = '<option value="">Select…</option>'; if (c === 'Malaysia') e.innerHTML += '<option>BMS</option><option>BMSD</option>'; else if (c === 'Singapore') e.innerHTML += '<option>BMSG</option>'; }
     function onRcToggle() { var ck = document.getElementById('ns-rc').checked; document.getElementById('ns-rc-box').style.display = ck ? '' : 'none'; if (ck) { var sel = document.getElementById('ns-parent'); sel.innerHTML = '<option value="">Select parent session…</option>'; S.filter(function (s) { return !s.rc && s.status !== 'Archived'; }).forEach(function (s) { sel.innerHTML += '<option value="' + s.id + '">' + s.id + ' — ' + s.name + '</option>'; }); } }
-    function clearFerr(id) { var el = document.getElementById(id); if (el) el.classList.remove('err'); var er = document.getElementById(id + '-err'); if (er) er.style.display = 'none'; }
-    function markFerr(id) { var el = document.getElementById(id); if (el) el.classList.add('err'); var er = document.getElementById(id + '-err'); if (er) er.style.display = ''; }
+    function clearFerr(id) { var el = document.getElementById(id); if (el) el.classList.remove('err'); var trig = document.getElementById('caltrig-' + id); if (trig) trig.classList.remove('err'); var er = document.getElementById(id + '-err'); if (er) er.style.display = 'none'; }
+    function markFerr(id) { var el = document.getElementById(id); if (el) el.classList.add('err'); var trig = document.getElementById('caltrig-' + id); if (trig) trig.classList.add('err'); var er = document.getElementById(id + '-err'); if (er) er.style.display = ''; }
     function createSession() { ['ns-name', 'ns-type', 'ns-country', 'ns-entity', 'ns-start', 'ns-end', 'ns-parent'].forEach(clearFerr); document.getElementById('ns-gen-err').style.display = 'none'; var n = document.getElementById('ns-name').value.trim(), t = document.getElementById('ns-type').value, co = document.getElementById('ns-country').value, en = document.getElementById('ns-entity').value, st = document.getElementById('ns-start').value, ed = document.getElementById('ns-end').value, rc = document.getElementById('ns-rc').checked, pid = rc ? document.getElementById('ns-parent').value : ''; var ok = true; if (!n) { markFerr('ns-name'); ok = false; } if (!t) { markFerr('ns-type'); ok = false; } if (!co) { markFerr('ns-country'); ok = false; } if (!en) { markFerr('ns-entity'); ok = false; } if (!st) { markFerr('ns-start'); ok = false; } if (!ed) { markFerr('ns-end'); ok = false; } if (rc && !pid) { markFerr('ns-parent'); ok = false; } if (!ok) { document.getElementById('ns-gen-err').style.display = ''; return; } var cc = co === 'Malaysia' ? 'MY' : 'SG', yr = st.slice(0, 4), tc = t === 'Year End' ? 'YE' : 'CC'; var newId = (rc ? 'RC' : tc) + yr + '-' + cc + '-' + (String(S.length + 1).padStart(3, '0')); S.push({ id: newId, name: n, type: t, entity: en, country: co, start: st, end: ed, status: 'Draft', progress: 0, rc: rc, parentId: rc ? pid : null, userVisible: false }); document.getElementById('ns-modal-wrap').style.display = 'none'; resetNSForm(); renderSessTable(); sb.from('sessions').insert({ id: newId, name: n, type: t, entity: en, country: co, start_date: st, end_date: ed, status: 'Draft', progress: 0, is_recount: rc, parent_id: rc ? pid : null, user_visible: false }).then(function (res) { if (res.error) alert('Failed to save session: ' + res.error.message); }); }
-    function resetNSForm() { ['ns-name', 'ns-start', 'ns-end'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; }); document.getElementById('ns-type').value = ''; document.getElementById('ns-country').value = ''; document.getElementById('ns-entity').innerHTML = '<option value="">Select…</option>'; document.getElementById('ns-rc').checked = false; document.getElementById('ns-rc-box').style.display = 'none';['ns-name', 'ns-type', 'ns-country', 'ns-entity', 'ns-start', 'ns-end', 'ns-parent'].forEach(clearFerr); document.getElementById('ns-gen-err').style.display = 'none'; }
+    function resetNSForm() { ['ns-name', 'ns-start', 'ns-end'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; }); setCalPickerVal('ns-start', ''); setCalPickerVal('ns-end', ''); document.getElementById('ns-type').value = ''; document.getElementById('ns-country').value = ''; document.getElementById('ns-entity').innerHTML = '<option value="">Select…</option>'; document.getElementById('ns-rc').checked = false; document.getElementById('ns-rc-box').style.display = 'none';['ns-name', 'ns-type', 'ns-country', 'ns-entity', 'ns-start', 'ns-end', 'ns-parent'].forEach(clearFerr); document.getElementById('ns-gen-err').style.display = 'none'; }
     // ── Supabase client ────────────────────────────────────────────────────────
     var SUPABASE_URL = 'https://lyouqmjrzvcdevglunyc.supabase.co';
     var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5b3VxbWpyenZjZGV2Z2x1bnljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3MjQ1OTYsImV4cCI6MjA4OTMwMDU5Nn0.xeR8GbU6NnP3-7GZENOLlWQi7uNvEYLUzeiwwhh1V34';
@@ -4393,7 +4653,7 @@
             '<td style="font-size:11px;color:#666;">' + (r.remark || '') + '</td>';
           tb.appendChild(tr);
         });
-        tbl.style.display = '';
+        tbl.style.display = 'table';
       });
     }
     // ─────────────────────────────────────────────────────────────────────────
@@ -4459,6 +4719,154 @@
     }
     // ─────────────────────────────────────────────────────────────────────────
 
+    // ── Cal.com-style Date Picker ──────────────────────────────────────────────
+    var _calState = {};
+
+    function toggleCalPicker(id) {
+      var popup = document.getElementById('calpop-' + id);
+      var trigger = document.getElementById('caltrig-' + id);
+      if (!popup || !trigger) return;
+      var isOpen = popup.classList.contains('open');
+      document.querySelectorAll('.cal-popup.open').forEach(function(p) { p.classList.remove('open'); });
+      if (!isOpen) {
+        var val = document.getElementById(id).value;
+        var base = val ? new Date(val + 'T00:00:00') : new Date();
+        _calState[id] = { year: base.getFullYear(), month: base.getMonth(), selected: val || null };
+        _renderCalGrid(id);
+        // Position popup using fixed coords so it escapes modal overflow clipping
+        var rect = trigger.getBoundingClientRect();
+        var popW = 288, popH = 320;
+        var top = rect.bottom + 6;
+        var left = rect.left;
+        // Prevent overflow on right edge
+        if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+        // Flip above if below viewport
+        if (top + popH > window.innerHeight - 8) top = rect.top - popH - 6;
+        popup.style.top = top + 'px';
+        popup.style.left = left + 'px';
+        popup.classList.add('open');
+      }
+    }
+
+    function calNav(id, dir) {
+      var s = _calState[id]; if (!s) return;
+      s.month += dir;
+      if (s.month < 0) { s.month = 11; s.year--; }
+      if (s.month > 11) { s.month = 0; s.year++; }
+      _renderCalGrid(id);
+    }
+
+    function _renderCalGrid(id) {
+      var s = _calState[id]; if (!s) return;
+      var grid = document.getElementById('calgrid-' + id);
+      var lbl = document.getElementById('calmon-' + id);
+      if (!grid || !lbl) return;
+      var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      lbl.textContent = MONTHS[s.month] + ' ' + s.year;
+      var today = new Date();
+      var todayStr = today.getFullYear() + '-' + _p2(today.getMonth()+1) + '-' + _p2(today.getDate());
+      var firstDow = new Date(s.year, s.month, 1).getDay();
+      var daysInMon = new Date(s.year, s.month + 1, 0).getDate();
+      var daysInPrev = new Date(s.year, s.month, 0).getDate();
+      var html = '';
+      // prev month overflow
+      for (var i = firstDow - 1; i >= 0; i--) {
+        var d = daysInPrev - i;
+        var py = s.month === 0 ? s.year - 1 : s.year;
+        var pm = s.month === 0 ? 12 : s.month;
+        var ds = py + '-' + _p2(pm) + '-' + _p2(d);
+        html += '<button class="cal-day-btn cal-outside" onclick="selectCalDay(\'' + id + '\',\'' + ds + '\');event.stopPropagation()">' + d + '</button>';
+      }
+      // current month
+      for (var d = 1; d <= daysInMon; d++) {
+        var ds = s.year + '-' + _p2(s.month + 1) + '-' + _p2(d);
+        var cls = 'cal-day-btn';
+        if (ds === s.selected) cls += ' cal-selected';
+        if (ds === todayStr) cls += ' cal-today';
+        html += '<button class="' + cls + '" onclick="selectCalDay(\'' + id + '\',\'' + ds + '\');event.stopPropagation()">' + d + '</button>';
+      }
+      // next month overflow (fill to complete last row)
+      var total = firstDow + daysInMon;
+      var rem = total % 7 === 0 ? 0 : 7 - (total % 7);
+      for (var d = 1; d <= rem; d++) {
+        var ny = s.month === 11 ? s.year + 1 : s.year;
+        var nm = s.month === 11 ? 1 : s.month + 2;
+        var ds = ny + '-' + _p2(nm) + '-' + _p2(d);
+        html += '<button class="cal-day-btn cal-outside" onclick="selectCalDay(\'' + id + '\',\'' + ds + '\');event.stopPropagation()">' + d + '</button>';
+      }
+      grid.innerHTML = html;
+    }
+
+    function selectCalDay(id, dateStr) {
+      var s = _calState[id]; if (s) s.selected = dateStr;
+      setCalPickerVal(id, dateStr);
+      document.getElementById('calpop-' + id).classList.remove('open');
+    }
+
+    function setCalPickerVal(id, dateStr) {
+      var inp = document.getElementById(id);
+      if (inp) inp.value = dateStr || '';
+      var disp = document.getElementById('caldisp-' + id);
+      if (disp) {
+        if (dateStr) {
+          disp.textContent = _fmtCalDate(dateStr);
+          disp.classList.remove('placeholder');
+        } else {
+          disp.textContent = 'Select date\u2026';
+          disp.classList.add('placeholder');
+        }
+      }
+    }
+
+    function _fmtCalDate(ds) {
+      if (!ds) return '';
+      var p = ds.split('-');
+      var MONS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return parseInt(p[2], 10) + ' ' + MONS[parseInt(p[1], 10) - 1] + ' ' + p[0];
+    }
+
+    function _p2(n) { return n < 10 ? '0' + String(n) : String(n); }
+
+    // Close cal popups when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.cal-pick-wrap')) {
+        document.querySelectorAll('.cal-popup.open').forEach(function(p) { p.classList.remove('open'); });
+      }
+    });
+
+    // ── Ruixen-style Column Toggle ─────────────────────────────────────────────
+    function toggleColMenu(menuId) {
+      var m = document.getElementById(menuId); if (!m) return;
+      var isOpen = m.classList.contains('open');
+      document.querySelectorAll('.col-toggle-menu.open').forEach(function(x) { x.classList.remove('open'); });
+      if (!isOpen) m.classList.add('open');
+    }
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.col-toggle-wrap')) {
+        document.querySelectorAll('.col-toggle-menu.open').forEach(function(x) { x.classList.remove('open'); });
+      }
+    });
+
+    function toggleItemCol(colName, visible) {
+      var table = document.getElementById('items-table'); if (!table) return;
+      var ths = Array.from(table.querySelectorAll('thead th'));
+      var colIdx = -1;
+      ths.forEach(function(th, i) { if (th.dataset.col === colName) colIdx = i; });
+      if (colIdx === -1) return;
+      ths[colIdx].style.display = visible ? '' : 'none';
+      Array.from(table.querySelectorAll('tbody tr')).forEach(function(row) {
+        if (row.cells[colIdx]) row.cells[colIdx].style.display = visible ? '' : 'none';
+      });
+    }
+
+    function applyItemColVisibility() {
+      var menu = document.getElementById('items-col-menu'); if (!menu) return;
+      menu.querySelectorAll('input[type=checkbox]').forEach(function(cb) {
+        var colName = cb.getAttribute('onchange').match(/'([^']+)'/)[1];
+        toggleItemCol(colName, cb.checked);
+      });
+    }
+
     function initFromAPI() { loadWarehouses(); loadUsers(); loadSessions(); }
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -4471,11 +4879,7 @@
       if (ssoUserRole === 'Admin') {
         goSessions();
       } else {
-        document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('active'); });
-        document.getElementById('page-count').classList.add('active');
-        document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.remove('active'); });
-        document.getElementById('nav-count').classList.add('active');
-        mnavSetActive('mnav-count');
+        goCount();
       }
     }
 
@@ -4565,6 +4969,7 @@
       </div>
     </div>
   </div>
+  <div id="item-toast"></div>
 </body>
 
 </html>
