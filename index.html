@@ -6,7 +6,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root {
@@ -1177,13 +1177,11 @@
       position: relative;
     }
 
-    #qr-reader {
-      width: 100% !important;
-      border: none !important;
-    }
-
-    #qr-reader video {
-      width: 100% !important;
+    #scan-video {
+      width: 100%;
+      max-height: 320px;
+      object-fit: cover;
+      border-radius: 0;
     }
 
     .scanner-close {
@@ -2271,7 +2269,8 @@
 
             <!-- Scanner container -->
             <div class="scanner-wrap" id="scanner-wrap">
-              <div id="qr-reader"></div>
+              <video id="scan-video" playsinline muted style="width:100%;display:block;background:#000;"></video>
+              <canvas id="scan-canvas" style="display:none;"></canvas>
               <button class="scanner-close" onclick="stopScanner()">&#10005; Close scanner</button>
             </div>
 
@@ -3366,7 +3365,9 @@
     var countItemId = null;
     var countSessId = null;
     var countItems = [];
-    var html5QrScanner = null;
+    var scanStream = null;
+    var scanRafId = null;
+    var scanLastTime = 0;
     var countPhotoFiles = [];
     var countSaveForced = false;
 
@@ -3926,50 +3927,76 @@
     }
 
     function startScanner() {
-      if (!window.Html5Qrcode) { alert('Scanner library not loaded.'); return; }
+      stopScanner();
       var wrap = document.getElementById('scanner-wrap');
       wrap.style.display = 'block';
       document.getElementById('btn-scan').disabled = true;
-      if (html5QrScanner) { try { html5QrScanner.stop().catch(function () { }); } catch (e) { } }
-      html5QrScanner = new Html5Qrcode('qr-reader');
-      var boxSize = Math.min(Math.floor(window.innerWidth * 0.7), 280);
-      html5QrScanner.start(
-        { facingMode: { ideal: 'environment' } },
-        { fps: 15, qrbox: { width: boxSize, height: boxSize } },
-        function (text) {
-          stopScanner();
-          if (text.startsWith('att:')) {
-            processAttQrScan(text);
-          } else {
-            document.getElementById('cv-q').value = text;
-            countSearch();
-          }
-        },
-        function () { }
-      ).catch(function (err) {
-        // Fallback: try without camera preference
-        html5QrScanner.start(
-          { facingMode: 'user' },
-          { fps: 15, qrbox: { width: boxSize, height: boxSize } },
-          function (text) {
-            stopScanner();
-            if (text.startsWith('att:')) { processAttQrScan(text); }
-            else { document.getElementById('cv-q').value = text; countSearch(); }
-          },
-          function () { }
-        ).catch(function (err2) {
-          stopScanner();
-          alert('Cannot access camera. Please allow camera permission in your browser settings.\n\n' + err2);
-        });
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Camera not supported in this browser.');
+        stopScanner(); return;
+      }
+
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+      }).then(function (stream) {
+        scanStream = stream;
+        var video = document.getElementById('scan-video');
+        video.srcObject = stream;
+        video.play().catch(function (e) { console.error('video.play():', e); });
+        scanRafId = requestAnimationFrame(processScanFrame);
+      }).catch(function (err) {
+        stopScanner();
+        alert('Cannot access camera. Please allow camera permission in browser settings.\n' + (err.message || err));
       });
     }
 
-    function stopScanner() {
-      document.getElementById('scanner-wrap').style.display = 'none';
-      document.getElementById('btn-scan').disabled = false;
-      if (html5QrScanner) {
-        html5QrScanner.stop().catch(function () { }).finally(function () { html5QrScanner = null; });
+    function processScanFrame(ts) {
+      if (!scanStream) return;
+      // Throttle to ~10 fps
+      if (ts - scanLastTime < 100) { scanRafId = requestAnimationFrame(processScanFrame); return; }
+      scanLastTime = ts;
+
+      var video = document.getElementById('scan-video');
+      if (!video || video.readyState < 2) { scanRafId = requestAnimationFrame(processScanFrame); return; }
+
+      // Try native BarcodeDetector first (Chrome/Android/Safari 17+)
+      if (window.BarcodeDetector) {
+        window.BarcodeDetector.getSupportedFormats().then(function (fmts) {
+          return new BarcodeDetector({ formats: fmts }).detect(video);
+        }).then(function (results) {
+          if (results.length) { stopScanner(); handleScanResult(results[0].rawValue); }
+          else { scanRafId = requestAnimationFrame(processScanFrame); }
+        }).catch(function () { scanRafId = requestAnimationFrame(processScanFrame); });
+        return;
       }
+
+      // Fallback: jsQR for QR codes
+      var canvas = document.getElementById('scan-canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var code = window.jsQR && window.jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+      if (code) { stopScanner(); handleScanResult(code.data); }
+      else { scanRafId = requestAnimationFrame(processScanFrame); }
+    }
+
+    function handleScanResult(text) {
+      if (text.startsWith('att:')) { processAttQrScan(text); }
+      else { document.getElementById('cv-q').value = text; countSearch(); }
+    }
+
+    function stopScanner() {
+      if (scanRafId) { cancelAnimationFrame(scanRafId); scanRafId = null; }
+      if (scanStream) { scanStream.getTracks().forEach(function (t) { t.stop(); }); scanStream = null; }
+      var video = document.getElementById('scan-video');
+      if (video) video.srcObject = null;
+      var wrap = document.getElementById('scanner-wrap');
+      if (wrap) wrap.style.display = 'none';
+      var btn = document.getElementById('btn-scan');
+      if (btn) btn.disabled = false;
     }
 
     // ── New Item Form ────────────────────────────────────────────────────────
