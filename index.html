@@ -2,6 +2,7 @@
 <html>
 
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -1561,6 +1562,20 @@
         display: none;
       }
     }
+
+    /* ── Login overlay — mobile full-screen ── */
+    @media (max-width: 768px) {
+      #sso-overlay {
+        align-items: flex-end !important;
+      }
+      #sso-overlay > div {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 20px 20px 0 0 !important;
+        padding: 32px 24px 36px !important;
+        box-shadow: 0 -8px 40px rgba(0,0,0,0.2) !important;
+      }
+    }
   </style>
 </head>
 
@@ -2513,7 +2528,8 @@
           code</label>
         <input class="input" id="sso-code" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit code"
           style="letter-spacing:0.2em;font-size:20px;text-align:center;margin-bottom:14px;"
-          onkeydown="if(event.key==='Enter')verifyOtp()" />
+          onkeydown="if(event.key==='Enter')verifyOtp()"
+          oninput="if(this.value.replace(/\D/g,'').length===6){this.value=this.value.replace(/\D/g,'');verifyOtp();}" />
         <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="verifyOtp()"
           id="sso-verify-btn">Verify &amp; sign in</button>
         <button
@@ -3905,9 +3921,10 @@
       document.getElementById('btn-scan').disabled = true;
       if (html5QrScanner) { try { html5QrScanner.stop().catch(function () { }); } catch (e) { } }
       html5QrScanner = new Html5Qrcode('qr-reader');
+      var boxSize = Math.min(Math.floor(window.innerWidth * 0.7), 280);
       html5QrScanner.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 250, height: 150 } },
+        { facingMode: { ideal: 'environment' } },
+        { fps: 15, qrbox: { width: boxSize, height: boxSize } },
         function (text) {
           stopScanner();
           if (text.startsWith('att:')) {
@@ -3919,8 +3936,20 @@
         },
         function () { }
       ).catch(function (err) {
-        stopScanner();
-        alert('Cannot access camera: ' + err);
+        // Fallback: try without camera preference
+        html5QrScanner.start(
+          { facingMode: 'user' },
+          { fps: 15, qrbox: { width: boxSize, height: boxSize } },
+          function (text) {
+            stopScanner();
+            if (text.startsWith('att:')) { processAttQrScan(text); }
+            else { document.getElementById('cv-q').value = text; countSearch(); }
+          },
+          function () { }
+        ).catch(function (err2) {
+          stopScanner();
+          alert('Cannot access camera. Please allow camera permission in your browser settings.\n\n' + err2);
+        });
       });
     }
 
