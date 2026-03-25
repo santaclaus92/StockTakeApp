@@ -2191,7 +2191,7 @@
             <div class="card" style="padding:0;overflow:hidden;">
               <!-- Ruixen-style toolbar inside card -->
               <div style="padding:10px 14px;border-bottom:0.5px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                <input class="input" placeholder="Search code or name…" style="flex:1;min-width:150px;"
+                <input class="input" id="item-search-input" placeholder="Search code or name…" style="flex:1;min-width:150px;"
                   oninput="filterItems(this.value)" />
                 <select class="select" style="width:auto;" id="item-status-filter" onchange="filterItems()">
                   <option value="all">All items</option>
@@ -2256,6 +2256,13 @@
                 </thead>
                 <tbody id="items-tbody"></tbody>
               </table>
+              <div id="items-pager" style="display:none;padding:8px 14px;border-top:0.5px solid var(--border);align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--text-2);">
+                <span id="items-pager-info"></span>
+                <div style="display:flex;gap:4px;">
+                  <button class="btn btn-sm" id="items-pager-prev" onclick="itemPageNav(-1)">&#8592; Prev</button>
+                  <button class="btn btn-sm" id="items-pager-next" onclick="itemPageNav(1)">Next &#8594;</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2458,10 +2465,14 @@
             <div class="overlay" onclick="closeDrilldown()">
               <div class="modal" style="max-width:90vw;width:90vw;max-height:90vh;height:90vh;display:flex;flex-direction:column;"
                 onclick="event.stopPropagation()">
-                <div
-                  style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-shrink:0;">
                   <div style="font-size:14px;font-weight:600;" id="drilldown-title">Items</div>
                   <button class="btn btn-sm" onclick="closeDrilldown()">✕ Close</button>
+                </div>
+                <div style="display:flex;gap:6px;margin-bottom:12px;flex-shrink:0;" id="drilldown-toggle">
+                  <button class="btn btn-sm btn-primary" id="dd-tab-pending" onclick="drilldownTab('pending')">Pending</button>
+                  <button class="btn btn-sm" id="dd-tab-counted" onclick="drilldownTab('counted')">Counted</button>
+                  <button class="btn btn-sm" id="dd-tab-all" onclick="drilldownTab('all')">All</button>
                 </div>
                 <div id="drilldown-body" style="overflow-y:auto;flex:1;"></div>
               </div>
@@ -2702,6 +2713,13 @@
                 onkeydown="if(event.key==='Enter'){event.preventDefault();processMultiScan();}" />
               <div id="ms-msg" style="display:none;margin-top:8px;"></div>
             </div>
+            <div id="ms-count-badge" style="display:none;background:var(--primary);border-radius:12px;padding:14px 20px;margin-bottom:12px;display:flex;align-items:center;gap:14px;">
+              <div style="font-size:36px;font-weight:800;color:#fff;line-height:1;" id="ms-count-num">0</div>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#fff;line-height:1.2;">items scanned</div>
+                <div style="font-size:11px;color:#fff;margin-top:2px;">this session</div>
+              </div>
+            </div>
             <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">Scan log</div>
             <div id="ms-log" style="display:flex;flex-direction:column;gap:6px;"></div>
           </div>
@@ -2835,6 +2853,7 @@
 
     var S = [];
     var items = [];
+    var _filteredItems = [], _itemPage = 0, _itemsPerPage = 200;
     var newItems = [];
     var pairs = [];
     var selItems = new Set(), openPairId = null, repairPairId = null, repReplName = null, repReplInit = null, editWarehousePairId = null, editPairId = null, nextPair = 5, curSessId = null, editSessId = null, lastCheckedRow = null;
@@ -3059,7 +3078,7 @@
     function pairOpts() { return pairs.map(function (p) { return '<option value="' + p.id + '">' + p.c + ' / ' + p.k + '</option>'; }).join(''); }
     function populateItemFilters() { var grps = [], whs = []; items.forEach(function (i) { if (i.grp && grps.indexOf(i.grp) === -1) grps.push(i.grp); var w = i.wh; if (w && whs.indexOf(w) === -1) whs.push(w); }); grps.sort(); whs.sort(); var gs = document.getElementById('item-grp-filter'), ws = document.getElementById('item-wh-filter'); if (!gs) return; var cg = gs.value, cw = ws.value; gs.innerHTML = '<option value="">All groups</option>' + grps.map(function (g) { return '<option>' + g + '</option>'; }).join(''); ws.innerHTML = '<option value="">All warehouses</option>' + whs.map(function (w) { return '<option>' + w + '</option>'; }).join(''); if (cg) gs.value = cg; if (cw) ws.value = cw; }
     function renderItems(filter, search) {
-      lastCheckedRow = null; filter = filter || document.getElementById('item-status-filter').value || 'all'; search = (typeof search === 'string' ? search : '').toLowerCase(); var grp = document.getElementById('item-grp-filter').value; var wh = document.getElementById('item-wh-filter').value; var entity = cs() ? cs().entity : ''; var rc = isRC(); document.getElementById('col-pair').style.display = rc ? '' : 'none'; document.getElementById('col-src').style.display = rc ? '' : 'none'; var sapBtn = document.getElementById('btn-import-sap'); if (sapBtn) sapBtn.style.display = rc ? 'none' : ''; var tb = document.getElementById('items-tbody'); tb.innerHTML = ''; var filtered = items.filter(function (i) { var mf = filter === 'all' || (filter === 'active' && !i.dropped) || (filter === 'dropped' && i.dropped); var ms = !search || i.code.toLowerCase().includes(search) || i.name.toLowerCase().includes(search); var mg = !grp || i.grp === grp; var mw = !wh || i.wh === wh; var me = !entity || i.entity === entity; return mf && ms && mg && mw && me; }); var subEl = document.getElementById('items-sub'); if (subEl) { subEl.textContent = 'Showing ' + filtered.length + ' items'; } var selAllBtn = document.getElementById('btn-sel-all'); if (selAllBtn) { selAllBtn.textContent = 'Select all ' + filtered.length; } filtered.forEach(function (item) {
+      lastCheckedRow = null; filter = filter || document.getElementById('item-status-filter').value || 'all'; search = (typeof search === 'string' ? search : '').toLowerCase(); var grp = document.getElementById('item-grp-filter').value; var wh = document.getElementById('item-wh-filter').value; var entity = cs() ? cs().entity : ''; var rc = isRC(); document.getElementById('col-pair').style.display = rc ? '' : 'none'; document.getElementById('col-src').style.display = rc ? '' : 'none'; var sapBtn = document.getElementById('btn-import-sap'); if (sapBtn) sapBtn.style.display = rc ? 'none' : ''; var tb = document.getElementById('items-tbody'); tb.innerHTML = ''; var filtered = items.filter(function (i) { var mf = filter === 'all' || (filter === 'active' && !i.dropped) || (filter === 'dropped' && i.dropped); var ms = !search || i.code.toLowerCase().includes(search) || i.name.toLowerCase().includes(search) || (i.batch && i.batch !== '—' && i.batch.toLowerCase().includes(search)); var mg = !grp || i.grp === grp; var mw = !wh || i.wh === wh; var me = !entity || i.entity === entity; return mf && ms && mg && mw && me; }); _filteredItems = filtered; var totalPages = Math.ceil(filtered.length / _itemsPerPage) || 1; if (_itemPage >= totalPages) _itemPage = totalPages - 1; if (_itemPage < 0) _itemPage = 0; var pageItems = filtered.slice(_itemPage * _itemsPerPage, (_itemPage + 1) * _itemsPerPage); var subEl = document.getElementById('items-sub'); if (subEl) { subEl.textContent = 'Showing ' + filtered.length + ' items' + (totalPages > 1 ? ' · page ' + (_itemPage + 1) + '/' + totalPages : ''); } var selAllBtn = document.getElementById('btn-sel-all'); if (selAllBtn) { selAllBtn.textContent = 'Select all ' + filtered.length; } var pager = document.getElementById('items-pager'); if (pager) { if (totalPages > 1) { pager.style.display = 'flex'; document.getElementById('items-pager-info').textContent = (_itemPage * _itemsPerPage + 1) + '–' + Math.min((_itemPage + 1) * _itemsPerPage, filtered.length) + ' of ' + filtered.length + ' items'; document.getElementById('items-pager-prev').disabled = _itemPage === 0; document.getElementById('items-pager-next').disabled = _itemPage >= totalPages - 1; } else { pager.style.display = 'none'; } } pageItems.forEach(function (item) {
         var tr = document.createElement('tr'); if (item.dropped) tr.style.opacity = '.45'; var pcell = rc ? '<td><select class="select" style="font-size:11px;padding:3px 7px;width:auto;" onchange="changeItemPair(\'' + item.id + '\',this.value)">' + pairOpts().replace('value="' + item.pairId + '"', 'value="' + item.pairId + '" selected') + '</select></td>' : ''; var srcCell = rc ? (item.src ? '<td><span class="badge ' + (item.src === 'new-item' ? 'b-purple' : 'b-warn') + '">' + (item.src === 'new-item' ? 'New item' : 'Variance') + '</span></td>' : '<td style="font-size:11px;color:#aaa;">—</td>') : ''; var pairName = item.pairId ? (function () { var p = pairs.find(function (x) { return x.id === item.pairId; }); return p ? p.c + ' / ' + p.k : item.pairId; })() : '\u2014';
         var photoBtn = item.photos && item.photos.length ? '<button class="photo-link-btn" onclick="openPhotoGallery(\'' + item.id + '\')">&#128247; ' + item.photos.length + '</button>' : '<span style="color:#aaa;font-size:11px;">\u2014</span>';
         tr.innerHTML = '<td><input type="checkbox" data-id="' + item.id + '"' + (selItems.has(item.id) ? ' checked' : '') + ' onclick="rowCheckClick(event,this)"/></td><td style="font-family:monospace;font-size:11px;">' + item.code + '</td><td>' + item.name + '</td><td>' + item.grp + '</td><td style="font-size:11px;">' + item.batch + '</td><td>' + item.uom + '</td>' + '<td style="font-size:11px;">' + (item.pkg || '\u2014') + '</td>' + '<td style="font-size:11px;">' + (item.expiry || '\u2014') + '</td>' + '<td style="font-size:11px;">' + (item.category || '\u2014') + '</td>' + '<td style="font-family:monospace;">' + item.sap + '</td>' + '<td>' + (item.cnt !== null && item.cnt !== undefined ? '<span class="qty-counted">' + item.cnt + '</span>' : '<span class="qty-null">—</span>') + '</td>' + '<td>' + (item.dmg !== null && item.dmg !== undefined ? '<span class="qty-dmg">' + item.dmg + '</span>' : '<span class="qty-null">—</span>') + '</td>' + '<td>' + (item.expQty !== null && item.expQty !== undefined ? '<span class="qty-exp">' + item.expQty + '</span>' : '<span class="qty-null">—</span>') + '</td>' + '<td style="font-size:11px;">' + pairName + '</td>' + '<td style="font-family:monospace;font-size:11px;">' + item.warehouse + '</td>' + '<td>' + photoBtn + '</td>' + pcell + srcCell + '<td><span class="badge ' + (item.dropped ? 'is-drop' : 'is-active') + '">' + (item.dropped ? 'Dropped' : 'Active') + '</span></td><td>' + (item.dropped ? '<button class="btn btn-sm rec-btn" onclick="toggleItem(\'' + item.id + '\')">Recover</button>' : '<button class="btn btn-sm drop-btn" onclick="toggleItem(\'' + item.id + '\')">Drop</button>') + '</td>'; tb.appendChild(tr);
@@ -3087,7 +3106,8 @@
       }
       renderItems(); if (openPairId) renderDrawer();
     }
-    function filterItems(v) { renderItems(document.getElementById('item-status-filter').value, typeof v === 'string' ? v : ''); }
+    function filterItems(v) { _itemPage = 0; renderItems(document.getElementById('item-status-filter').value, typeof v === 'string' ? v : (document.getElementById('item-search-input') ? document.getElementById('item-search-input').value : '')); }
+    function itemPageNav(dir) { _itemPage += dir; renderItems(); }
     function rowCheckClick(e, cb) {
       var boxes = Array.from(document.querySelectorAll('#items-tbody input[type=checkbox]'));
       if (e.shiftKey && lastCheckedRow) {
@@ -3101,8 +3121,8 @@
       updateSel();
     }
     function updateSel() { selItems.clear(); document.querySelectorAll('#items-tbody input[type=checkbox]:checked').forEach(function (cb) { selItems.add(cb.dataset.id); }); var bar = document.getElementById('bulk-bar'); bar.style.display = selItems.size ? 'flex' : 'none'; document.getElementById('sel-lbl').textContent = selItems.size + ' selected'; }
-    function toggleAllItems(cb) { if (cb.checked) { document.querySelectorAll('#items-tbody input[type=checkbox]').forEach(function (c) { selItems.add(c.dataset.id); }); } else { selItems.clear(); } renderItems(); }
-    function selectAllFiltered() { document.querySelectorAll('#items-tbody input[type=checkbox]').forEach(function (c) { selItems.add(c.dataset.id); }); renderItems(); }
+    function toggleAllItems(cb) { if (cb.checked) { _filteredItems.forEach(function(i) { selItems.add(i.id); }); } else { selItems.clear(); } renderItems(); }
+    function selectAllFiltered() { _filteredItems.forEach(function(i) { selItems.add(i.id); }); renderItems(); }
     function clearSel() { selItems.clear(); renderItems(); }
     function bulkDrop() {
       var ids = Array.from(selItems); var count = ids.length;
@@ -3184,6 +3204,7 @@
       makeRows(grpMap, 'db-grp-tbody', 'group');
       makeRows(whMap, 'db-wh-tbody', 'warehouse');
     }
+    var _ddItems = [], _ddTitle = '';
     function openDrilldown(type, key) {
       var entity = cs() ? cs().entity : '';
       var active = items.filter(function (i) { return !i.dropped && (!entity || i.entity === entity); });
@@ -3192,16 +3213,31 @@
         if (type === 'warehouse') return (i.wh || i.warehouse || '—') === key;
         return true;
       });
-      var label = key === '—' ? 'Unassigned' : key;
-      var typeLabel = type === 'group' ? 'Item Group' : 'Warehouse';
-      document.getElementById('drilldown-title').textContent = typeLabel + ' — ' + label + ' (' + filtered.length + ' items)';
       filtered = filtered.slice().sort(function (a, b) {
         var aCounted = a.cnt !== null && a.cnt !== undefined && a.cnt !== '';
         var bCounted = b.cnt !== null && b.cnt !== undefined && b.cnt !== '';
-        if (aCounted !== bCounted) return aCounted ? 1 : -1; // not counted first
+        if (aCounted !== bCounted) return aCounted ? 1 : -1;
         return (a.name || '').localeCompare(b.name || '');
       });
-      var rows = filtered.map(function (i) {
+      _ddItems = filtered;
+      var label = key === '—' ? 'Unassigned' : key;
+      _ddTitle = (type === 'group' ? 'Item Group' : 'Warehouse') + ' — ' + label;
+      drilldownTab('pending');
+      document.getElementById('drilldown-wrap').style.display = '';
+    }
+    function drilldownTab(mode) {
+      ['pending','counted','all'].forEach(function(m) {
+        var btn = document.getElementById('dd-tab-' + m);
+        if (btn) { btn.className = 'btn btn-sm' + (m === mode ? ' btn-primary' : ''); }
+      });
+      var list = _ddItems.filter(function(i) {
+        var hasCnt = i.cnt !== null && i.cnt !== undefined && i.cnt !== '';
+        if (mode === 'pending') return !hasCnt;
+        if (mode === 'counted') return hasCnt;
+        return true;
+      });
+      document.getElementById('drilldown-title').textContent = _ddTitle + ' — ' + list.length + ' ' + (mode === 'all' ? 'total' : mode);
+      var rows = list.map(function (i) {
         var hasCnt = i.cnt !== null && i.cnt !== undefined && i.cnt !== '';
         var hasVar = hasCnt && i.variance && Math.abs(parseFloat(i.variance)) > 0;
         var sc = hasCnt ? (hasVar ? 'b-warn' : 'b-success') : 'b-danger';
@@ -3209,6 +3245,7 @@
         return '<tr>'
           + '<td style="font-family:monospace;font-size:11px;">' + (i.code || '—') + '</td>'
           + '<td>' + (i.name || '—') + '</td>'
+          + '<td style="font-family:monospace;font-size:11px;color:var(--text-2);">' + (i.batch && i.batch !== '—' ? i.batch : '—') + '</td>'
           + '<td style="font-size:11px;color:var(--text-2);">' + (i.wh || i.warehouse || '—') + '</td>'
           + '<td style="text-align:right;">' + (i.sap !== null && i.sap !== undefined ? i.sap : '—') + '</td>'
           + '<td style="text-align:right;font-weight:' + (hasCnt ? '600' : '400') + ';">' + (hasCnt ? i.cnt : '—') + '</td>'
@@ -3216,13 +3253,12 @@
           + '</tr>';
       }).join('');
       document.getElementById('drilldown-body').innerHTML =
-        '<table class="tbl" style="min-width:520px;"><thead><tr>'
-        + '<th>Code</th><th>Name</th><th>Warehouse</th>'
+        '<table class="tbl" style="min-width:580px;"><thead><tr>'
+        + '<th>Code</th><th>Name</th><th>Batch</th><th>Warehouse</th>'
         + '<th style="text-align:right;">SAP Qty</th><th style="text-align:right;">Count Qty</th><th>Status</th>'
         + '</tr></thead><tbody>'
-        + (rows || '<tr><td colspan="6" style="text-align:center;color:#aaa;padding:14px;">No items</td></tr>')
+        + (rows || '<tr><td colspan="7" style="text-align:center;color:#aaa;padding:14px;">No items</td></tr>')
         + '</tbody></table>';
-      document.getElementById('drilldown-wrap').style.display = '';
     }
     function closeDrilldown() { document.getElementById('drilldown-wrap').style.display = 'none'; }
     function renderGallery() { var grid = document.getElementById('gallery-grid'); grid.innerHTML = ''; var icons = ['&#128230;', '&#128295;', '&#129524;']; newItems.forEach(function (n, i) { var sc = n.status === 'Approved' ? 'b-success' : n.status === 'Rejected' ? 'b-danger' : 'b-warn'; var d = document.createElement('div'); d.className = 'card'; d.innerHTML = '<div style="background:#f5f5f5;border-radius:6px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:10px;">' + icons[i % 3] + '</div><div style="font-size:13px;font-weight:500;margin-bottom:3px;">' + n.name + '</div><div style="font-size:11px;color:#666;margin-bottom:6px;">Qty: ' + n.qty + ' · Warehouse ' + n.warehouse + ' · ' + n.by + '</div><div style="margin-bottom:8px;"><span class="badge ' + sc + '">' + n.status + '</span></div><div style="display:flex;gap:5px;"><button class="btn btn-sm btn-success" style="flex:1;" onclick="setGalleryStatus(\'' + n.id + '\',\'Approved\')">Approve</button><button class="btn btn-sm btn-danger" style="flex:1;" onclick="setGalleryStatus(\'' + n.id + '\',\'Rejected\')">Reject</button><button class="btn btn-sm btn-primary">SAP ›</button></div>'; grid.appendChild(d); }); }
@@ -3528,55 +3564,68 @@
 
     function importFromSAP() {
       var btn = document.getElementById('btn-import-sap');
-      if (!confirm('This will erase all existing items for this session. Any count quantities, pair assignments, and drop status will be lost.\n\nProceed?')) { return; }
+      if (!confirm('This will delete all existing items for this session and reload fresh from SAP. Count quantities, pair assignments, and drop status will be lost.\n\nProceed?')) { return; }
       btn.disabled = true; btn.textContent = 'Importing\u2026';
-      showImportLoading('Importing items from SAP\u2026');
+      showImportLoading('Fetching items from SAP\u2026');
       var sessEntity = cs() ? cs().entity : '';
+
       fetch(FN_BASE + '/import-items', { method: 'POST', headers: FN_HEADERS, body: JSON.stringify({ sessionId: curSessId, entity: sessEntity }) })
-        .then(function (r) {
-          return r.text().then(function (t) {
-            if (!t) { alert('Flow returned no data. Add a Response action to your Power Automate flow.'); return; }
-            var data; try { data = JSON.parse(t); } catch (e) { alert('Flow did not return valid JSON:\n' + t.slice(0, 200)); return; }
-            var arr = Array.isArray(data) ? data : (data.items || data.value || []);
-            if (!arr.length) { alert('No items returned from SAP.'); return; }
-            var toUpsert = arr.map(function (i) {
-              return {
-                id: i.ItemInternalId || i.id || ('SAP-' + Math.random().toString(36).slice(2)),
-                code: i.item_code || i.code || '',
-                name: i.item_name || i.name || '',
-                group: i.item_group || i.grp || '',
-                batch: i.batch_serial_num || i.batch || null,
-                uom: i.uom || 'PCS',
-                warehouse: i.item_location || i.wh_code || i.warehouse || i.bin || null,
-                sap_qty: +(i.sap_qty !== undefined ? i.sap_qty : (i.sap || 0)),
-                count_qty: (i.qty_d2 !== undefined && i.qty_d2 !== null) ? +(i.qty_d2) : null,
-                pair_id: null,
-                dropped: false,
-                session_id: curSessId || null,
-                entity: i.entity || null,
-                wh_code: i.wh_code || null,
-                expiry_date: i.expiry_date ? i.expiry_date.split('T')[0] : null,
-                category: i.category || null,
-                new_item: i.new_item || 'No',
-                variance: +(i.variance_d2 || 0),
-                cost: +(i.cost || 0),
-                is_delete: !!i.is_delete
-              };
-            });
-            sb.from('items').delete().eq('session_id', curSessId).then(function (delRes) {
-              if (delRes.error) { alert('Failed to clear existing items: ' + delRes.error.message); return; }
-              sb.from('items').insert(toUpsert).then(function (res) {
-                if (res.error) { alert('Failed to save items to Supabase: ' + res.error.message); return; }
-                items = toUpsert.map(mapItem);
-                populateItemFilters(); renderItems(); buildDashboard();
-                var sessEntity = cs() ? cs().entity : '';
-                var entityCount = sessEntity ? toUpsert.filter(function (i) { return i.entity === sessEntity; }).length : toUpsert.length;
-                alert('Imported ' + entityCount + ' items' + (sessEntity ? ' for ' + sessEntity : '') + ' from SAP.');
+        .then(function (r) { return r.text(); })
+        .then(function (t) {
+          if (!t) throw new Error('Flow returned no data. Add a Response action to your Power Automate flow.');
+          var data; try { data = JSON.parse(t); } catch (e) { throw new Error('Flow did not return valid JSON:\n' + t.slice(0, 200)); }
+          var arr = Array.isArray(data) ? data : (data.items || data.value || []);
+          if (!arr.length) throw new Error('No items returned from SAP.');
+          var toInsert = arr.map(function (i) {
+            return {
+              id: i.ItemInternalId || i.id || ('SAP-' + Math.random().toString(36).slice(2)),
+              code: i.item_code || i.code || '',
+              name: i.item_name || i.name || '',
+              group: i.item_group || i.grp || '',
+              batch: i.batch_serial_num || i.batch || null,
+              uom: i.uom || 'PCS',
+              warehouse: i.item_location || i.wh_code || i.warehouse || i.bin || null,
+              sap_qty: +(i.sap_qty !== undefined ? i.sap_qty : (i.sap || 0)),
+              count_qty: null,
+              pair_id: null,
+              dropped: false,
+              session_id: curSessId || null,
+              entity: i.entity || null,
+              wh_code: i.wh_code || null,
+              expiry_date: i.expiry_date ? i.expiry_date.split('T')[0] : null,
+              category: i.category || null,
+              new_item: i.new_item || 'No',
+              variance: +(i.variance_d2 || 0),
+              cost: +(i.cost || 0),
+              is_delete: !!i.is_delete
+            };
+          });
+          // Step 1: delete all existing items for this session
+          showImportLoading('Deleting existing items\u2026');
+          return sb.from('items').delete().eq('session_id', curSessId).then(function (delRes) {
+            if (delRes.error) throw new Error('Failed to delete existing items: ' + delRes.error.message);
+            // Step 2: insert in chunks of 500 to avoid Supabase batch limits
+            var chunks = [];
+            for (var i = 0; i < toInsert.length; i += 500) chunks.push(toInsert.slice(i, i + 500));
+            showImportLoading('Saving ' + toInsert.length + ' items (' + chunks.length + ' batch' + (chunks.length > 1 ? 'es' : '') + ')\u2026');
+            return chunks.reduce(function (p, chunk, idx) {
+              return p.then(function () {
+                showImportLoading('Saving batch ' + (idx + 1) + ' of ' + chunks.length + '\u2026');
+                return sb.from('items').insert(chunk).then(function (res) {
+                  if (res.error) throw new Error('Failed to insert items (batch ' + (idx + 1) + '): ' + res.error.message);
+                });
               });
-            });
+            }, Promise.resolve()).then(function () { return toInsert; });
           });
         })
-        .catch(function (e) { alert('Import failed: ' + e.message); })
+        .then(function (toInsert) {
+          items = toInsert.map(mapItem);
+          populateItemFilters(); renderItems(); buildDashboard();
+          var entity = cs() ? cs().entity : '';
+          var count = entity ? toInsert.filter(function (i) { return i.entity === entity; }).length : toInsert.length;
+          alert('Imported ' + count + ' items' + (entity ? ' for ' + entity : '') + ' from SAP.');
+        })
+        .catch(function (e) { alert('Import failed: ' + (e.message || String(e))); })
         .finally(function () { hideImportLoading(); btn.disabled = false; btn.textContent = '\u2191 Import from SAP'; });
     }
 
@@ -4438,6 +4487,8 @@
       document.getElementById('ms-input').value = '';
       document.getElementById('ms-msg').style.display = 'none';
       document.getElementById('ms-log').innerHTML = '';
+      var msb = document.getElementById('ms-count-badge'); if (msb) { msb.style.display = 'none'; msb._count = 0; var mn = document.getElementById('ms-count-num'); if (mn) mn.textContent = '0'; }
+      _msLastCode = ''; _msLastTime = 0;
       setTimeout(function(){ document.getElementById('ms-input').focus(); }, 80);
     }
     function closeMultiScan() {
@@ -4447,11 +4498,17 @@
       document.getElementById('cv-empty').style.display = 'none';
       document.getElementById('cv-search-view').style.display = 'block';
     }
+    var _msLastCode = '', _msLastTime = 0;
     function processMultiScan() {
       var inp = document.getElementById('ms-input');
       var code = inp.value.trim();
       inp.value = '';
       if (!code) return;
+      // Debounce: same barcode within 500ms = duplicate scanner fire, ignore
+      var now = Date.now();
+      if (code === _msLastCode && now - _msLastTime < 500) return;
+      _msLastCode = code;
+      _msLastTime = now;
       var sessEntity = (S.find(function(s){ return s.id === countSessId; }) || {}).entity || '';
       // Match by batch OR item code, entity-filtered
       var match = countItems.find(function(i) {
@@ -4468,14 +4525,27 @@
         log.prepend(entry);
         return;
       }
+      // Already counted — warn and skip
+      if (match.cnt !== null && match.cnt !== undefined && match.cnt !== '') {
+        var batchWarn = (match.batch && match.batch !== '—') ? match.batch : match.code;
+        var msg = document.getElementById('ms-msg');
+        if (msg) { msg.textContent = '\u26a0\ufe0f ' + batchWarn + ' is already counted (Qty: ' + match.cnt + ') — not saved.'; msg.style.display = ''; msg.style.color = '#d97706'; setTimeout(function(){ msg.style.display = 'none'; }, 4000); }
+        return;
+      }
       // Increment count
       var newCnt = ((match.cnt !== null && match.cnt !== undefined) ? +match.cnt : 0) + 1;
       match.cnt = newCnt;
       sb.from('items').update({ count_qty: newCnt }).eq('id', match.id).then(function(){});
+      var batchDisplay = (match.batch && match.batch !== '—') ? match.batch : match.code;
       entry.innerHTML = '<span style="width:22px;height:22px;border-radius:50%;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:#10b981;">&#10003;</span>'
-        + '<span style="flex:1;"><strong>' + match.code + '</strong> ' + match.name + '</span>'
-        + '<span style="font-weight:700;color:var(--primary);">Qty: ' + newCnt + '</span>';
+        + '<span style="flex:1;min-width:0;">'
+        +   '<div style="font-family:monospace;font-size:13px;font-weight:700;color:var(--text);">' + batchDisplay + '</div>'
+        +   '<div style="font-size:11px;color:var(--text-3);margin-top:1px;">' + match.code + ' · ' + match.name + '</div>'
+        + '</span>'
+        + '<span style="font-weight:700;color:var(--primary);flex-shrink:0;">Qty: ' + newCnt + '</span>';
       log.prepend(entry);
+      var msb = document.getElementById('ms-count-badge');
+      if (msb) { msb._count = (msb._count || 0) + 1; var mn = document.getElementById('ms-count-num'); if (mn) mn.textContent = msb._count; msb.style.display = 'flex'; }
       setTimeout(function(){ inp.focus(); }, 50);
     }
 
