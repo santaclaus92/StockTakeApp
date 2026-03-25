@@ -1213,6 +1213,8 @@
       border-radius: var(--radius);
       padding: 16px;
       cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: rgba(44,62,80,0.08);
       transition: box-shadow 0.15s, transform 0.15s;
       box-shadow: var(--shadow-card);
     }
@@ -1561,6 +1563,13 @@
       .mobile-nav {
         display: none;
       }
+    }
+
+    @media (max-width: 768px) {
+      /* Hide desktop topbar on mobile */
+      .topbar { display: none !important; }
+      /* Hide Sessions button from mobile bottom nav */
+      #mnav-sessions { display: none !important; }
     }
 
     /* ── Login overlay — mobile full-screen ── */
@@ -2270,7 +2279,7 @@
             <div class="cv-search-row">
               <input class="input" id="cv-q" placeholder="Search by item code, name, or batch number…"
                 oninput="countSearch()" onkeydown="if(event.key==='Enter')countSearch()" />
-              <button class="btn" onclick="openMultiScan()" title="Multiple scan with handheld scanner">
+              <button class="btn" id="btn-multiscan" style="display:none;" onclick="openMultiScan()" title="Multiple scan with handheld scanner">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
                 Multi-Scan
               </button>
@@ -3532,7 +3541,9 @@
       document.getElementById('cv-active-name').textContent = sess.name + ' (' + sess.entity + ')' + (ssoUserName ? '  ·  ' + ssoUserName : '');
       document.getElementById('cv-home-view').style.display = 'none';
       document.getElementById('cv-detail-view').style.display = 'none';
-      document.getElementById('cv-search-view').style.display = '';
+      document.getElementById('cv-search-view').style.display = 'block';
+      var ms = document.getElementById('btn-multiscan');
+      if (ms) ms.style.display = (ssoUserRole === 'Admin' || ssoUserRole === 'Multiscan') ? '' : 'none';
       document.getElementById('cv-gallery-view').style.display = 'none';
       document.getElementById('cv-empty').style.display = 'none';
       document.getElementById('cv-q').value = '';
@@ -3622,7 +3633,7 @@
     function showCountSearch() {
       stopScanner();
       document.getElementById('cv-home-view').style.display = 'none';
-      document.getElementById('cv-search-view').style.display = '';
+      document.getElementById('cv-search-view').style.display = 'block';
       document.getElementById('cv-detail-view').style.display = 'none';
       countItemId = null;
       countPhotoFiles = [];
@@ -3671,7 +3682,7 @@
       countPhotoFiles = [];
       stopScanner();
       document.getElementById('cv-search-view').style.display = 'none';
-      document.getElementById('cv-detail-view').style.display = '';
+      document.getElementById('cv-detail-view').style.display = 'block';
 
       // Reset save state
       countSaveForced = false;
@@ -3917,7 +3928,7 @@
     function startScanner() {
       if (!window.Html5Qrcode) { alert('Scanner library not loaded.'); return; }
       var wrap = document.getElementById('scanner-wrap');
-      wrap.style.display = '';
+      wrap.style.display = 'block';
       document.getElementById('btn-scan').disabled = true;
       if (html5QrScanner) { try { html5QrScanner.stop().catch(function () { }); } catch (e) { } }
       html5QrScanner = new Html5Qrcode('qr-reader');
@@ -3991,7 +4002,7 @@
     }
     function closeNewItemForm() {
       document.getElementById('cv-newitem-view').style.display = 'none';
-      document.getElementById('cv-search-view').style.display = '';
+      document.getElementById('cv-search-view').style.display = 'block';
     }
     function niPreviewPhotos() {
       niPhotoFiles = Array.from(document.getElementById('ni-photos').files);
@@ -4080,7 +4091,7 @@
       document.getElementById('cv-q').value = '';
       document.getElementById('cv-gallery-view').style.display = 'none';
       document.getElementById('cv-empty').style.display = 'none';
-      document.getElementById('cv-search-view').style.display = '';
+      document.getElementById('cv-search-view').style.display = 'block';
     }
     function processMultiScan() {
       var inp = document.getElementById('ms-input');
