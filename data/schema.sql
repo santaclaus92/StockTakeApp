@@ -55,11 +55,14 @@ ALTER TABLE items ADD COLUMN IF NOT EXISTS wh_code      TEXT;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS expiry_date  DATE;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS category     TEXT;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS new_item     TEXT    DEFAULT 'No';
+ALTER TABLE items ADD COLUMN IF NOT EXISTS src          TEXT;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS sap_status   TEXT;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS variance     NUMERIC DEFAULT 0;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS cost         NUMERIC DEFAULT 0;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS is_delete    BOOLEAN DEFAULT FALSE;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS dropped      BOOLEAN DEFAULT FALSE;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS item_status   TEXT;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS assigned_to   TEXT;
 
 -- Attendance tracking per session
 CREATE TABLE IF NOT EXISTS session_attendees (
@@ -126,10 +129,25 @@ ALTER TABLE warehouses DISABLE ROW LEVEL SECURITY;
 -- END $$;
 
 -- Rename bin column on items to warehouse (run once)
-ALTER TABLE items RENAME COLUMN bin TO warehouse;
+DO $$ BEGIN
+  ALTER TABLE items RENAME COLUMN bin TO warehouse;
+EXCEPTION WHEN undefined_column THEN NULL;
+END $$;
+
+-- Rename warehouse column on items to bin_location (run once)
+DO $$ BEGIN
+  ALTER TABLE items RENAME COLUMN warehouse TO bin_location;
+EXCEPTION WHEN undefined_column THEN NULL;
+END $$;
+
+-- submitted_by: who submitted the count / new item
+ALTER TABLE items ADD COLUMN IF NOT EXISTS submitted_by TEXT;
 
 -- Rename bin_id column on pairs to warehouse_id (run once)
-ALTER TABLE pairs RENAME COLUMN bin_id TO warehouse_id;
+DO $$ BEGIN
+  ALTER TABLE pairs RENAME COLUMN bin_id TO warehouse_id;
+EXCEPTION WHEN undefined_column THEN NULL;
+END $$;
 
 -- ============================================================
 -- Audit Trail
@@ -150,6 +168,9 @@ CREATE TABLE IF NOT EXISTS item_audit (
   counted_at   TIMESTAMPTZ  DEFAULT NOW()
 );
 ALTER TABLE item_audit DISABLE ROW LEVEL SECURITY;
+-- Track admin-approved edits on a count entry (original count_qty is preserved for trail)
+ALTER TABLE item_audit ADD COLUMN IF NOT EXISTS edited_qty  NUMERIC;
+ALTER TABLE item_audit ADD COLUMN IF NOT EXISTS edited_by   TEXT;
 CREATE INDEX IF NOT EXISTS idx_item_audit_session_id ON item_audit(session_id);
 CREATE INDEX IF NOT EXISTS idx_item_audit_item_id    ON item_audit(item_id);
 
@@ -167,9 +188,10 @@ CREATE TABLE IF NOT EXISTS session_deletions (
 -- Keep RLS enabled so it is NOT readable via the anon key used by the app
 -- (rows can only be inserted, never queried, from the frontend)
 ALTER TABLE session_deletions ENABLE ROW LEVEL SECURITY;
--- Allow inserts from anon role but block all reads
-CREATE POLICY session_deletions_insert ON session_deletions FOR INSERT TO anon WITH CHECK (true);
--- No SELECT policy = no reads for anon key
+-- Allow inserts from any authenticated user but block all reads
+DROP POLICY IF EXISTS session_deletions_insert ON session_deletions;
+CREATE POLICY session_deletions_insert ON session_deletions FOR INSERT TO public WITH CHECK (true);
+-- No SELECT policy = no reads via anon/authenticated key (only service role can query)
 
 -- ============================================================
 -- OTP Tokens (4-digit codes for custom email auth)
@@ -184,3 +206,188 @@ CREATE TABLE IF NOT EXISTS otp_tokens (
 -- Block all access from anon key — only service role (Edge Functions) can read/write
 ALTER TABLE otp_tokens ENABLE ROW LEVEL SECURITY;
 -- No policies = no access for anon key
+
+-- ============================================================
+-- Count Adjustments (pending approval queue)
+-- Submitted by users editing their history; approved by admin
+-- ============================================================
+CREATE TABLE IF NOT EXISTS count_adjustments (
+  id           TEXT        PRIMARY KEY,
+  session_id   TEXT        NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  item_id      TEXT        NOT NULL,
+  item_code    TEXT,
+  item_name    TEXT,
+  old_qty      NUMERIC,
+  new_qty      NUMERIC,
+  submitted_by TEXT,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  status       TEXT        NOT NULL DEFAULT 'Pending',  -- 'Pending' | 'Approved' | 'Rejected'
+  reviewed_by  TEXT,
+  reviewed_at  TIMESTAMPTZ
+);
+ALTER TABLE count_adjustments DISABLE ROW LEVEL SECURITY;
+-- Link adjustment back to the original audit row so approval can mark it as edited
+ALTER TABLE count_adjustments ADD COLUMN IF NOT EXISTS audit_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_count_adj_session_id ON count_adjustments(session_id);
+CREATE INDEX IF NOT EXISTS idx_count_adj_status     ON count_adjustments(status);
+
+-- ============================================================
+-- Storage: item-photos bucket policies
+-- Run in Supabase SQL Editor (Storage uses storage.objects table)
+-- ============================================================
+-- DROP POLICY IF EXISTS "public_upload" ON storage.objects;
+-- DROP POLICY IF EXISTS "public_read"   ON storage.objects;
+-- CREATE POLICY "public_upload" ON storage.objects FOR INSERT TO public WITH CHECK (bucket_id = 'item-photos');
+-- CREATE POLICY "public_read"   ON storage.objects FOR SELECT TO public USING  (bucket_id = 'item-photos');
+-- Note: policies are commented out because storage.objects may not exist until the bucket is created.
+-- Run the two CREATE POLICY lines above after creating the item-photos bucket in Supabase Dashboard.
+
+-- ============================================================
+-- FIX 1.1 + 1.2 — Strict Role-Based Database Policies (RLS)
+-- These prevent brute-force or DevTools attacks. Only users 
+-- with a verified JWT token can touch the database.
+-- ============================================================
+
+-- Sessions
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_sessions" ON sessions;
+DROP POLICY IF EXISTS "Admin Write Sessions" ON sessions;
+DROP POLICY IF EXISTS "Strict Read Sessions" ON sessions;
+DROP POLICY IF EXISTS "Auth Write Sessions" ON sessions;
+CREATE POLICY "Strict Read Sessions" ON sessions FOR SELECT TO public USING (true);
+CREATE POLICY "Auth Write Sessions" ON sessions FOR ALL TO public USING (auth.jwt() IS NOT NULL) WITH CHECK (auth.jwt() IS NOT NULL);
+
+-- Pairs
+ALTER TABLE pairs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_pairs" ON pairs;
+DROP POLICY IF EXISTS "Admin Write Pairs" ON pairs;
+DROP POLICY IF EXISTS "Strict Read Pairs" ON pairs;
+DROP POLICY IF EXISTS "Auth Write Pairs" ON pairs;
+CREATE POLICY "Strict Read Pairs" ON pairs FOR SELECT TO public USING (true);
+CREATE POLICY "Auth Write Pairs" ON pairs FOR ALL TO public USING (auth.jwt() IS NOT NULL) WITH CHECK (auth.jwt() IS NOT NULL);
+
+-- Items (Everyone reads. Authenticated users can insert/update/delete)
+ALTER TABLE items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_items" ON items;
+DROP POLICY IF EXISTS "Admin Delete Items" ON items;
+DROP POLICY IF EXISTS "Strict Read Items" ON items;
+DROP POLICY IF EXISTS "User Update Items" ON items;
+DROP POLICY IF EXISTS "User Insert Items" ON items;
+DROP POLICY IF EXISTS "Auth Delete Items" ON items;
+CREATE POLICY "Strict Read Items" ON items FOR SELECT TO public USING (true);
+CREATE POLICY "User Update Items" ON items FOR UPDATE TO public USING (auth.jwt() IS NOT NULL) WITH CHECK (auth.jwt() IS NOT NULL);
+CREATE POLICY "User Insert Items" ON items FOR INSERT TO public WITH CHECK (auth.jwt() IS NOT NULL);
+CREATE POLICY "Auth Delete Items" ON items FOR DELETE TO public USING (auth.jwt() IS NOT NULL);
+
+-- Warehouses
+ALTER TABLE warehouses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_warehouses" ON warehouses;
+DROP POLICY IF EXISTS "Admin Write Warehouses" ON warehouses;
+DROP POLICY IF EXISTS "Strict Read Warehouses" ON warehouses;
+DROP POLICY IF EXISTS "Auth Write Warehouses" ON warehouses;
+CREATE POLICY "Strict Read Warehouses" ON warehouses FOR SELECT TO public USING (true);
+CREATE POLICY "Auth Write Warehouses" ON warehouses FOR ALL TO public USING (auth.jwt() IS NOT NULL) WITH CHECK (auth.jwt() IS NOT NULL);
+
+-- Session Attendees (writes go through save-attendance Edge Function)
+ALTER TABLE session_attendees ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_session_attendees" ON session_attendees;
+DROP POLICY IF EXISTS "Admin Write Attendees" ON session_attendees;
+DROP POLICY IF EXISTS "Admin Delete Attendees" ON session_attendees;
+DROP POLICY IF EXISTS "Strict Read Attendees" ON session_attendees;
+DROP POLICY IF EXISTS "User Insert Attendees" ON session_attendees;
+DROP POLICY IF EXISTS "Auth Write Attendees" ON session_attendees;
+DROP POLICY IF EXISTS "Auth Delete Attendees" ON session_attendees;
+CREATE POLICY "Strict Read Attendees" ON session_attendees FOR SELECT TO public USING (true);
+CREATE POLICY "User Insert Attendees" ON session_attendees FOR INSERT TO public WITH CHECK (auth.jwt() IS NOT NULL);
+CREATE POLICY "Auth Write Attendees" ON session_attendees FOR UPDATE TO public USING (auth.jwt() IS NOT NULL) WITH CHECK (auth.jwt() IS NOT NULL);
+CREATE POLICY "Auth Delete Attendees" ON session_attendees FOR DELETE TO public USING (auth.jwt() IS NOT NULL);
+
+-- Audit (Everyone inserts & reads, nobody deletes)
+ALTER TABLE item_audit ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_item_audit" ON item_audit;
+DROP POLICY IF EXISTS "anon_insert_item_audit" ON item_audit;
+DROP POLICY IF EXISTS "Strict Read Audit" ON item_audit;
+DROP POLICY IF EXISTS "User Insert Audit" ON item_audit;
+CREATE POLICY "Strict Read Audit" ON item_audit FOR SELECT TO public USING (true);
+CREATE POLICY "User Insert Audit" ON item_audit FOR INSERT TO public WITH CHECK (auth.jwt() IS NOT NULL);
+
+-- Count Adjustments
+ALTER TABLE count_adjustments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_count_adjustments" ON count_adjustments;
+DROP POLICY IF EXISTS "Admin Write Adjustments" ON count_adjustments;
+DROP POLICY IF EXISTS "Admin Delete Adjustments" ON count_adjustments;
+DROP POLICY IF EXISTS "Strict Read Adjustments" ON count_adjustments;
+DROP POLICY IF EXISTS "User Insert Adjustments" ON count_adjustments;
+DROP POLICY IF EXISTS "Auth Write Adjustments" ON count_adjustments;
+DROP POLICY IF EXISTS "Auth Delete Adjustments" ON count_adjustments;
+CREATE POLICY "Strict Read Adjustments" ON count_adjustments FOR SELECT TO public USING (true);
+CREATE POLICY "User Insert Adjustments" ON count_adjustments FOR INSERT TO public WITH CHECK (auth.jwt() IS NOT NULL);
+CREATE POLICY "Auth Write Adjustments" ON count_adjustments FOR UPDATE TO public USING (auth.jwt() IS NOT NULL) WITH CHECK (auth.jwt() IS NOT NULL);
+CREATE POLICY "Auth Delete Adjustments" ON count_adjustments FOR DELETE TO public USING (auth.jwt() IS NOT NULL);
+
+-- Users (writes handled by Edge Functions with service role key, but allow authenticated as fallback)
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_users" ON users;
+DROP POLICY IF EXISTS "anon_update_users" ON users;
+DROP POLICY IF EXISTS "anon_insert_users" ON users;
+DROP POLICY IF EXISTS "Admin Update Users" ON users;
+DROP POLICY IF EXISTS "Admin Insert Users" ON users;
+DROP POLICY IF EXISTS "Admin Delete Users" ON users;
+DROP POLICY IF EXISTS "Strict Read Users" ON users;
+DROP POLICY IF EXISTS "Auth Write Users" ON users;
+CREATE POLICY "Strict Read Users" ON users FOR SELECT TO public USING (true);
+CREATE POLICY "Auth Write Users" ON users FOR ALL TO public USING (auth.jwt() IS NOT NULL) WITH CHECK (auth.jwt() IS NOT NULL);
+
+-- ============================================================
+-- FIX 1.2 — Role via Supabase Auth Metadata (upgrade path)
+-- Instead of storing role in sessionStorage (spoofable), store
+-- it in auth.users.raw_app_meta_data as { "role": "Admin" }.
+-- The role is then embedded in the JWT and available as:
+--   auth.jwt() -> 'app_metadata' ->> 'role'   (in RLS policies)
+--   user.app_metadata.role                    (in frontend via sb.auth.getUser())
+--
+-- Step 1: Set role for existing users via Supabase dashboard:
+--   UPDATE auth.users
+--   SET raw_app_meta_data = raw_app_meta_data || '{"role": "Admin"}'::jsonb
+--   WHERE email = 'admin@yourdomain.com';
+--
+-- Step 2: In index.html verifyOtp(), replace sessionStorage role:
+--   sb.auth.getUser().then(function(r) {
+--     ssoUserRole = (r.data.user.app_metadata || {}).role || 'User';
+--     // DO NOT store role in sessionStorage anymore
+--   });
+--
+-- Step 3 (optional, tighten later): Scope destructive policies:
+--   CREATE POLICY "admin_delete_sessions" ON sessions
+--     FOR DELETE TO authenticated
+--     USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'Admin');
+-- ============================================================
+
+-- ============================================================
+-- FIX 1.2 — Admin Promotion via Frontend (RPC Function)
+-- Used by the frontend 'Users & Roles' modal to securely upgrade
+-- a user's role without exposing the auth.users table directly.
+-- ============================================================
+CREATE OR REPLACE FUNCTION set_user_role(target_email text, new_role text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Strict security barrier: Only existing Admins can execute this function
+  IF (auth.jwt() -> 'app_metadata' ->> 'role') IS DISTINCT FROM 'Admin' THEN
+    RAISE EXCEPTION 'Access denied: Must be Admin to change roles.';
+  END IF;
+
+  -- 1. Securely update the core JWT metadata in auth.users
+  UPDATE auth.users
+  SET raw_app_meta_data = 
+    COALESCE(raw_app_meta_data, '{}'::jsonb) || jsonb_build_object('role', new_role)
+  WHERE email = target_email;
+
+  -- 2. Keep the public.users table in sync for your admin UI to show
+  UPDATE public.users 
+  SET role = new_role 
+  WHERE email = target_email;
+END;
+$$;

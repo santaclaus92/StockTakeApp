@@ -5,3 +5,7 @@ data/*.json
 dist
 build
 .DS_Store
+tests/e2e/.auth/
+.claude/settings.local.json
+test-results/
+supabase/.temp/

@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs/promises');
 
 const PORT = process.env.PORT || 4000;
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const RESOURCES = {
   items: {
     file: 'items.json',
@@ -16,7 +16,7 @@ const RESOURCES = {
         group: 'Machinery',
         batch: 'BT-2024-001',
         uom: 'PCS',
-        bin: 'A-07',
+        warehouse: 'A-07',
         sapQty: 50,
         countQty: 50,
         pairId: 'P01',
@@ -29,7 +29,7 @@ const RESOURCES = {
         group: 'Hardware',
         batch: '—',
         uom: 'MTR',
-        bin: 'B-04',
+        warehouse: 'B-04',
         sapQty: 12,
         countQty: 9,
         pairId: 'P02',
@@ -45,13 +45,9 @@ const RESOURCES = {
       { id: 'U003', name: 'Jarvis Ng', role: 'counter', team: 'South Yard' }
     ]
   },
-  bins: {
-    file: 'bins.json',
-    defaults: [
-      { id: 'A-01', zone: 'A', level: 1, capacity: 20 },
-      { id: 'B-04', zone: 'B', level: 1, capacity: 30 },
-      { id: 'D-09', zone: 'D', level: 2, capacity: 18 }
-    ]
+  warehouses: {
+    file: 'warehouses.json',
+    defaults: []
   }
 };
 
@@ -111,10 +107,17 @@ const parseBody = (req) =>
     req.on('error', reject);
   });
 
-const setCors = (res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:4000').split(',').map(o => o.trim());
+const API_KEY = process.env.API_KEY || '';
+
+const setCors = (req, res) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,X-Api-Key');
 };
 
 const send = (res, status, payload) => {
@@ -124,10 +127,15 @@ const send = (res, status, payload) => {
 };
 
 const server = http.createServer(async (req, res) => {
-  setCors(res);
+  setCors(req, res);
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
     return res.end();
+  }
+
+  // API key guard — skip for OPTIONS (already returned above)
+  if (API_KEY && req.headers['x-api-key'] !== API_KEY) {
+    return send(res, 401, { message: 'Unauthorized: missing or invalid X-Api-Key header' });
   }
 
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -135,12 +143,33 @@ const server = http.createServer(async (req, res) => {
 
   if (segments[0] !== 'api') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    return res.end('StockTake Pro API is running. Use /api/items, /api/users, /api/bins.');
+    return res.end('StockTake Pro API is running. Use /api/items, /api/users, /api/warehouses.');
   }
 
   const resource = segments[1];
   const id = segments[2];
+  const action = segments[3]; // e.g. /api/warehouses/import
   const collection = RESOURCES[resource];
+
+  // POST /api/warehouses/import — replace all warehouse records with incoming JSON array
+  if (resource === 'warehouses' && id === 'import' && req.method === 'POST') {
+    try {
+      const payload = await parseBody(req);
+      if (!Array.isArray(payload)) {
+        return send(res, 400, { message: 'Import expects a JSON array of warehouse objects' });
+      }
+      const normalised = payload.map((w) => ({
+        id: w.id || w.code || w.name,
+        name: w.name || w.id || w.code || '',
+        shelves: Array.isArray(w.shelves) ? w.shelves : [],
+        ...w
+      }));
+      await writeResource('warehouses', normalised);
+      return send(res, 200, { imported: normalised.length, warehouses: normalised });
+    } catch (err) {
+      return send(res, 500, { message: 'Import failed', details: err.message });
+    }
+  }
 
   if (!collection) {
     return send(res, 404, { message: `Unknown resource: ${resource}` });

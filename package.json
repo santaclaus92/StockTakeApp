@@ -4,8 +4,15 @@
   "description": "",
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "npx serve ."
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit/",
+    "test:e2e": "playwright test --project=chromium",
+    "test:e2e:setup": "playwright test --project=setup",
+    "test:all": "vitest run && playwright test --project=chromium",
+    "dev": "concurrently \"vite\" \"node server.js\"",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
@@ -14,5 +21,12 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "concurrently": "^9.2.1",
+    "jsdom": "^29.0.1",
+    "vite": "^8.0.2",
+    "vitest": "^4.1.1"
+  }
 }

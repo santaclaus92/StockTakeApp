@@ -1,28 +1,34 @@
-# StockTake Pro API
 
-- **Server**: `node server.js` (default port `4000`, configurable via `PORT`)
-- **Storage**: JSON files in `data/` act as lightweight persistence for `items`, `users`, and `bins`. Each resource exposes `id` for PK-style operations.
-- **Endpoints**
-  * `GET /api/items|users|bins` — list the entire collection.
-  * `GET /api/{resource}/{id}` — retrieve one document.
-  * `POST /api/{resource}` — append new entries (single object or array). Example body:
-    ```json
-    {
-      "code": "ITM-005555",
-      "name": "Chain Hoist",
-      "group": "Lifting",
-      "bin": "C-03",
-      "sapQty": 12,
-      "countQty": 0,
-      "status": "active"
-    }
-    ```
-  * `PUT /api/{resource}/{id}` — update fields for an existing entry.
-  * `DELETE /api/{resource}/{id}` — remove entry by `id`.
 
-- **Integration notes**
-  * CORS headers are already configured so your frontend can hit the API from any origin.
-  * To seed new data from the UI, POST to `/api/items`, `/api/users`, or `/api/bins`.
-  * All responses are JSON; errors include a `message` property and (when available) `details`.
+---
 
-Feel free to wire this API behind your modernized HTML by updating the fetch calls in your scripts and pointing them at `http://localhost:4000/api/...`.
+## Local API Server (development only)
+
+```
+node server.js          # default port 4000, override with PORT=xxxx
+```
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/items\|users\|warehouses` | List all records |
+| `GET /api/{resource}/{id}` | Get one record |
+| `POST /api/{resource}` | Append records (object or array) |
+| `PUT /api/{resource}/{id}` | Update a record |
+| `DELETE /api/{resource}/{id}` | Delete a record |
+| `POST /api/warehouses/import` | Replace all warehouse records |
+
+Data is persisted in `data/items.json`, `data/users.json`, `data/warehouses.json`.
+
+---
+
+## Supabase Schema
+
+Run `data/schema.sql` in the Supabase SQL Editor to create/migrate all tables:
+
+- `sessions` — stock-take sessions
+- `pairs` — counter/checker pairs per session
+- `items` — item master with count data
+- `users` — staff imported from Azure AD via Power Automate
+- `warehouses` — bin/location list synced from Power Automate webhook
+- `session_attendees` — attendance tracking per session
+- `item_audit` — audit trail of every count submission (who, what qty, when)
