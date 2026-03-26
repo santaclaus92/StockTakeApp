@@ -818,56 +818,55 @@
         <!-- ── Scan & Count page ── -->
         <div class="page" id="page-count">
 
-          <!-- Home view: session selection cards -->
+          <!-- Home view: session selection -->
           <div id="cv-home-view">
-            <div style="font-size:15px;font-weight:700;color:var(--primary);margin-bottom:4px;">Scan &amp; Count</div>
-            <div style="font-size:12px;color:var(--text-3);margin-bottom:12px;">Select a session to begin counting</div>
+            <div class="cv-page-header">
+              <div class="cv-page-title">Scan &amp; Count</div>
+              <div class="cv-page-sub">Select a session to begin counting</div>
+            </div>
             <div id="cv-home-ended" class="banner bn-warn" style="display:none;"></div>
-            <div id="cv-home-empty" class="banner bn-info" style="display:none;">No active sessions are currently
-              available. Ask an admin to enable a session.</div>
+            <div id="cv-home-empty" class="banner bn-info" style="display:none;">No active sessions are currently available. Ask an admin to enable a session.</div>
             <div class="ush-grid" id="cv-home-grid"></div>
           </div>
 
-          <!-- Search / scan view (shown after session selected) -->
+          <!-- Search / scan view -->
           <div id="cv-search-view" style="display:none;">
-            <!-- Active session bar -->
+            <!-- Active session pill -->
             <div class="cv-active-bar" id="cv-active-bar">
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="8" r="6" stroke="rgba(255,255,255,0.7)" stroke-width="1.3" />
-                <path d="M8 5v3l2 2" stroke="rgba(255,255,255,0.7)" stroke-width="1.3" stroke-linecap="round" />
-              </svg>
+              <div class="cv-active-dot"></div>
               <span class="cv-active-name" id="cv-active-name">—</span>
-              <button class="cv-active-change" onclick="changeCountSession()">Change session</button>
+              <button class="cv-active-change" onclick="changeCountSession()">Change</button>
             </div>
             <div id="cv-sess-banner" style="display:none;"></div>
 
-            <!-- Scanner container -->
+            <!-- Scanner -->
             <div class="scanner-wrap" id="scanner-wrap">
               <video id="scan-video" playsinline muted style="width:100%;display:block;background:#000;"></video>
               <canvas id="scan-canvas" style="display:none;"></canvas>
-              <button class="scanner-close" onclick="stopScanner()">&#10005; Close scanner</button>
+              <button class="scanner-close" onclick="stopScanner()">&#10005; Close</button>
             </div>
 
-            <!-- Search bar -->
-            <div class="cv-search-row">
-              <input class="input" id="cv-q" placeholder="Search by item code, name, or batch number…"
-                oninput="countSearch()" onkeydown="if(event.key==='Enter')countSearch()" />
-              <button class="btn" id="btn-multiscan" style="display:none;" onclick="openMultiScan()" title="Multiple scan with handheld scanner">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                Multi-Scan
-              </button>
-              <button class="btn btn-primary" onclick="startScanner()" id="btn-scan" title="Scan barcode / QR">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="2" y="2" width="6" height="6" rx="1" />
-                  <rect x="16" y="2" width="6" height="6" rx="1" />
-                  <rect x="2" y="16" width="6" height="6" rx="1" />
-                  <path d="M16 16h6M16 20h6M20 16v6" />
-                  <path d="M8 12H2M12 2v6M12 10v2M12 16v6M16 12h6" />
-                </svg>
-                Scan
-              </button>
-              <button class="btn" onclick="countSearch()">Search</button>
-              <button class="btn btn-primary" onclick="openNewItemForm('')" title="Add a new item not in the item master">+ New Item</button>
+            <!-- Search area -->
+            <div class="cv-search-block">
+              <div class="cv-search-row">
+                <input class="cv-search-input" id="cv-q" placeholder="Item code, name or batch…"
+                  oninput="countSearch()" onkeydown="if(event.key==='Enter')countSearch()" />
+              </div>
+              <div class="cv-action-row">
+                <button class="cv-btn-scan" onclick="startScanner()" id="btn-scan">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="2" y="2" width="6" height="6" rx="1"/><rect x="16" y="2" width="6" height="6" rx="1"/>
+                    <rect x="2" y="16" width="6" height="6" rx="1"/><path d="M16 16h6M16 20h6M20 16v6"/>
+                    <path d="M8 12H2M12 2v6M12 10v2M12 16v6M16 12h6"/>
+                  </svg>
+                  Scan Barcode
+                </button>
+                <button class="cv-btn-secondary" id="btn-multiscan" style="display:none;" onclick="openMultiScan()">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                  Multi-Scan
+                </button>
+                <button class="cv-btn-ghost" onclick="openNewItemForm('')">+ New</button>
+              </div>
             </div>
 
             <!-- Warehouse filter -->
@@ -891,172 +890,179 @@
             </div>
 
             <!-- No results -->
-            <div id="cv-empty" style="display:none;text-align:center;padding:32px 0;">
-              <div style="font-size:13px;color:var(--text-3);margin-bottom:14px;">No items matched your search.</div>
+            <div id="cv-empty" style="display:none;text-align:center;padding:48px 0;">
+              <div style="font-size:13px;color:var(--text-3);margin-bottom:16px;">No items matched your search.</div>
               <div id="cv-wh-hint" style="display:none;font-size:12px;color:#d97706;margin-bottom:12px;"></div>
               <button class="btn btn-primary btn-sm" onclick="openNewItemForm(document.getElementById('cv-q').value.trim())">+ Add as new item</button>
             </div>
 
             <!-- Multi-result gallery -->
             <div id="cv-gallery-view" style="display:none;">
-              <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:10px;" id="cv-gallery-label">
-              </div>
+              <div class="cv-gallery-label" id="cv-gallery-label"></div>
               <div class="cv-result-grid" id="cv-result-grid"></div>
             </div>
           </div>
 
           <!-- Item detail / counting form -->
           <div id="cv-detail-view" style="display:none;">
-            <button class="btn btn-sm" onclick="showCountSearch()" style="margin-bottom:14px;">&#8592; Back to
-              search</button>
+            <button class="cv-back-btn" onclick="showCountSearch()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+              Back to search
+            </button>
 
-            <!-- Item info header (eyeball verification) -->
             <div class="cv-detail-header" id="cvd-header"></div>
 
-            <!-- Count form -->
-            <div class="card">
-              <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:14px;">Count Input</div>
+            <div class="cv-form-section">
+              <div class="cv-form-title">Count Input</div>
               <div class="count-form-grid">
                 <div>
                   <label class="flbl req">Bin Location</label>
                   <div id="cvd-bin-combo" style="position:relative;">
-                    <div style="display:flex;align-items:stretch;border:1px solid var(--border);border-radius:var(--radius);background:#fff;overflow:hidden;">
+                    <div class="cv-combo-wrap">
                       <input id="cvd-bin-input" type="text" autocomplete="off" placeholder="Search or type bin…"
-                        style="flex:1;border:none;outline:none;padding:7px 10px;font-size:13px;font-family:var(--font-sans);background:transparent;"
+                        class="cv-combo-input"
                         oninput="binComboFilter()" onfocus="binComboOpen()" onblur="setTimeout(binComboClose,160)" />
-                      <button type="button" tabindex="-1"
-                        style="padding:0 9px;background:none;border:none;border-left:1px solid var(--border);cursor:pointer;color:var(--text-3);display:flex;align-items:center;"
+                      <button type="button" tabindex="-1" class="cv-combo-chevron"
                         onmousedown="event.preventDefault()" onclick="binComboToggle()">
                         <svg id="cvd-bin-chevron" width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="transition:transform 0.15s;"><polyline points="1.5 3.5 5.5 7.5 9.5 3.5"/></svg>
                       </button>
                     </div>
-                    <div id="cvd-bin-dropdown" style="display:none;position:absolute;top:calc(100% + 3px);left:0;right:0;z-index:300;background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,0.1);max-height:200px;overflow-y:auto;"></div>
+                    <div id="cvd-bin-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:300;background:#fff;border:0.5px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.08);max-height:200px;overflow-y:auto;"></div>
                   </div>
                 </div>
                 <div>
                   <label class="flbl req">Counted Qty</label>
-                  <input class="input" id="cvd-cnt" type="number" min="0" placeholder="0" />
+                  <input class="cv-qty-input" id="cvd-cnt" type="number" min="0" placeholder="0" />
                 </div>
                 <div>
                   <label class="flbl">Damaged Qty</label>
-                  <input class="input" id="cvd-dmg" type="number" min="0" placeholder="0" />
+                  <input class="cv-qty-input" id="cvd-dmg" type="number" min="0" placeholder="0" />
                 </div>
                 <div>
                   <label class="flbl">Expired Qty</label>
-                  <input class="input" id="cvd-exp" type="number" min="0" placeholder="0" />
+                  <input class="cv-qty-input" id="cvd-exp" type="number" min="0" placeholder="0" />
                 </div>
                 <div class="count-form-full">
                   <label class="flbl">Remark</label>
-                  <textarea class="input" id="cvd-remark" rows="2" placeholder="Optional notes…"
-                    style="resize:vertical;"></textarea>
+                  <textarea class="cv-textarea" id="cvd-remark" rows="2" placeholder="Optional notes…"></textarea>
                 </div>
                 <div class="count-form-full">
                   <label class="flbl">Photos</label>
-                  <input type="file" id="cvd-photos" accept="image/*" multiple capture="environment" style="display:none;"
-                    onchange="previewPhotos()" />
-                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                    <button class="btn btn-sm" onclick="document.getElementById('cvd-photos').click()">&#128247; Add
-                      photos</button>
-                    <span style="font-size:11px;color:var(--text-3);" id="cvd-photo-count">No photos selected</span>
-                  </div>
+                  <input type="file" id="cvd-photos" accept="image/*" multiple capture="environment" style="display:none;" onchange="previewPhotos()" />
+                  <button class="cv-photo-btn" onclick="document.getElementById('cvd-photos').click()" type="button">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    <div>
+                      <div style="font-size:13px;font-weight:600;color:var(--text);">Add Photos</div>
+                      <div class="cv-photo-sub" id="cvd-photo-count">No photos selected</div>
+                    </div>
+                  </button>
                   <div class="photo-preview-row" id="cvd-preview"></div>
                 </div>
               </div>
-              <div style="display:flex;gap:8px;margin-top:4px;">
-                <button class="btn btn-primary" style="flex:1;" onclick="saveCountData()" id="cvd-save-btn">&#10003;
-                  Save count</button>
-                <button class="btn" onclick="showCountSearch()">Cancel</button>
-              </div>
+              <button class="cv-save-btn" onclick="saveCountData()" id="cvd-save-btn">&#10003; Save count</button>
+              <button class="cv-cancel-btn" onclick="showCountSearch()">Cancel</button>
               <div id="cvd-msg" style="display:none;margin-top:10px;"></div>
             </div>
           </div>
 
           <!-- New Item form -->
           <div id="cv-newitem-view" style="display:none;">
-            <button class="btn btn-sm" onclick="closeNewItemForm()" style="margin-bottom:14px;">&#8592; Back to search</button>
-            <div style="font-size:14px;font-weight:700;color:var(--primary);margin-bottom:4px;">Add New Item</div>
-            <div style="font-size:11px;color:var(--text-3);margin-bottom:14px;">Item not found in SAP master — submit details for admin review.</div>
-            <div class="card">
+            <button class="cv-back-btn" onclick="closeNewItemForm()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+              Back to search
+            </button>
+            <div style="margin-bottom:20px;">
+              <div class="cv-page-title">Add New Item</div>
+              <div class="cv-page-sub">Not in SAP master — submit for admin review</div>
+            </div>
+            <div class="cv-form-section">
               <div class="count-form-grid">
                 <div>
                   <label class="flbl req">Item Code</label>
-                  <input class="input" id="ni-code" type="text" placeholder="e.g. ITM-99999" autocomplete="off" />
+                  <input class="cv-field-input" id="ni-code" type="text" placeholder="e.g. ITM-99999" autocomplete="off" />
                 </div>
                 <div>
                   <label class="flbl req">Item Name</label>
-                  <input class="input" id="ni-name" type="text" placeholder="Full item description" autocomplete="off" />
+                  <input class="cv-field-input" id="ni-name" type="text" placeholder="Full item description" autocomplete="off" />
                 </div>
                 <div>
                   <label class="flbl req">UOM</label>
-                  <input class="input" id="ni-uom" type="text" placeholder="e.g. PCS, BOX, KG" autocomplete="off" />
+                  <input class="cv-field-input" id="ni-uom" type="text" placeholder="e.g. PCS, BOX, KG" autocomplete="off" />
                 </div>
                 <div>
                   <label class="flbl req">Serial / Batch No.</label>
-                  <input class="input" id="ni-serial" type="text" placeholder="e.g. BT-2025-001" autocomplete="off" />
+                  <input class="cv-field-input" id="ni-serial" type="text" placeholder="e.g. BT-2025-001" autocomplete="off" />
                 </div>
                 <div>
                   <label class="flbl req">Bin Location</label>
-                  <input class="input" id="ni-bin" list="ni-bins-dl" placeholder="Type or select…" autocomplete="off" />
+                  <input class="cv-field-input" id="ni-bin" list="ni-bins-dl" placeholder="Type or select…" autocomplete="off" />
                   <datalist id="ni-bins-dl"></datalist>
                 </div>
                 <div>
                   <label class="flbl req">Counted Qty</label>
-                  <input class="input" id="ni-cnt" type="number" min="0" placeholder="0" />
+                  <input class="cv-qty-input" id="ni-cnt" type="number" min="0" placeholder="0" />
                 </div>
                 <div>
                   <label class="flbl">Damaged Qty</label>
-                  <input class="input" id="ni-dmg" type="number" min="0" placeholder="0" />
+                  <input class="cv-qty-input" id="ni-dmg" type="number" min="0" placeholder="0" />
                 </div>
                 <div>
                   <label class="flbl">Expired Qty</label>
-                  <input class="input" id="ni-exp" type="number" min="0" placeholder="0" />
+                  <input class="cv-qty-input" id="ni-exp" type="number" min="0" placeholder="0" />
                 </div>
                 <div class="count-form-full">
                   <label class="flbl">Remark</label>
-                  <textarea class="input" id="ni-remark" rows="2" placeholder="Optional notes…" style="resize:vertical;"></textarea>
+                  <textarea class="cv-textarea" id="ni-remark" rows="2" placeholder="Optional notes…"></textarea>
                 </div>
                 <div class="count-form-full">
                   <label class="flbl req">Photos <span style="font-weight:400;color:var(--text-3);">(at least one required)</span></label>
                   <input type="file" id="ni-photos" accept="image/*" multiple style="display:none;" onchange="niPreviewPhotos()" />
-                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                    <button class="btn btn-sm" onclick="document.getElementById('ni-photos').click()">&#128247; Add photos</button>
-                    <span style="font-size:11px;color:var(--text-3);" id="ni-photo-count">No photos selected</span>
-                  </div>
+                  <button class="cv-photo-btn" onclick="document.getElementById('ni-photos').click()" type="button">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    <div>
+                      <div style="font-size:13px;font-weight:600;color:var(--text);">Add Photos</div>
+                      <div class="cv-photo-sub" id="ni-photo-count">No photos selected</div>
+                    </div>
+                  </button>
                   <div class="photo-preview-row" id="ni-preview"></div>
                 </div>
               </div>
               <div id="ni-msg" style="display:none;margin-bottom:10px;"></div>
-              <div style="display:flex;gap:8px;margin-top:4px;">
-                <button class="btn btn-primary" style="flex:1;" id="ni-save-btn" onclick="submitNewItem()">&#10003; Submit new item</button>
-                <button class="btn" onclick="closeNewItemForm()">Cancel</button>
-              </div>
+              <button class="cv-save-btn" id="ni-save-btn" onclick="submitNewItem()">&#10003; Submit New Item</button>
+              <button class="cv-cancel-btn" onclick="closeNewItemForm()">Cancel</button>
             </div>
           </div>
 
           <!-- Multiple Scan view -->
           <div id="cv-multiscan-view" style="display:none;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="cv-multiscan-header">
               <div>
-                <div style="font-size:14px;font-weight:700;color:var(--primary);">Multiple Scan</div>
-                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Scan batch barcode — each scan adds 1 unit to count qty.</div>
+                <div class="cv-page-title">Multiple Scan</div>
+                <div class="cv-page-sub">Each scan adds 1 unit to count qty</div>
               </div>
-              <button class="btn btn-sm" onclick="closeMultiScan()">&#10005; Done</button>
+              <button class="cv-close-btn" onclick="closeMultiScan()">&#10005; Done</button>
             </div>
-            <div class="card" style="margin-bottom:12px;">
-              <label class="flbl" style="margin-bottom:6px;">Point scanner here and scan</label>
-              <input class="input" id="ms-input" type="text" autocomplete="off" placeholder="Waiting for scan…"
+            <div class="cv-form-section" style="margin-bottom:12px;">
+              <label class="flbl" style="margin-bottom:8px;display:block;">Point scanner here and scan</label>
+              <input class="cv-field-input" id="ms-input" type="text" autocomplete="off" placeholder="Waiting for scan…"
                 style="font-size:15px;letter-spacing:0.05em;"
                 onkeydown="if(event.key==='Enter'){event.preventDefault();processMultiScan();}" />
               <div id="ms-msg" style="display:none;margin-top:8px;"></div>
             </div>
-            <div id="ms-count-badge" style="display:none;background:var(--primary);border-radius:12px;padding:14px 20px;margin-bottom:12px;display:flex;align-items:center;gap:14px;">
-              <div style="font-size:36px;font-weight:800;color:#fff;line-height:1;" id="ms-count-num">0</div>
+            <div id="ms-count-badge" class="cv-ms-counter" style="display:none;">
+              <div class="cv-ms-num" id="ms-count-num">0</div>
               <div>
-                <div style="font-size:13px;font-weight:700;color:#fff;line-height:1.2;">items scanned</div>
-                <div style="font-size:11px;color:#fff;margin-top:2px;">this session</div>
+                <div style="font-size:14px;font-weight:600;color:#fff;line-height:1.2;">items scanned</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.65);margin-top:2px;">this session</div>
               </div>
             </div>
-            <div style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">Scan log</div>
+            <div class="cv-log-header">Scan log</div>
             <div id="ms-log" style="display:flex;flex-direction:column;gap:6px;"></div>
           </div>
 
@@ -1069,9 +1075,7 @@
                   <button class="btn btn-sm" onclick="closePhotoModal()">&#10005;</button>
                 </div>
                 <div class="photo-gallery-grid" id="photo-gallery-grid"></div>
-                <div id="photo-gallery-empty"
-                  style="display:none;text-align:center;padding:24px;color:var(--text-3);font-size:12px;">No photos
-                  uploaded yet.</div>
+                <div id="photo-gallery-empty" style="display:none;text-align:center;padding:24px;color:var(--text-3);font-size:12px;">No photos uploaded yet.</div>
               </div>
             </div>
           </div>
