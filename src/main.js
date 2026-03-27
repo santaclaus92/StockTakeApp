@@ -963,7 +963,7 @@ var attendees = [];
         var timeStr = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         var isSelf = row.submitted_by === state.ssoUserName;
         var sess = state.S.find(function(s) { return s.id === row.session_id; });
-        var isEdited = row.edited_qty !== null && row.edited_qty !== undefined;
+        var isEdited = row.edited_qty != null;
         var adj = _histAdjMap[row.id] || null;
         var isPending = !!(adj && adj.status === 'Pending');
         var isApproved = !!(adj && adj.status === 'Approved');
@@ -2129,6 +2129,12 @@ var attendees = [];
         rows.forEach(function (r) {
           var dt = r.counted_at ? new Date(r.counted_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
           var tr = document.createElement('tr');
+          var isApprovalRow = r.remark && r.remark.indexOf('Qty approved:') === 0;
+          var remarkHtml = r.remark
+            ? (isApprovalRow
+              ? '<span style="color:#1d4ed8;font-weight:600;">' + r.remark + '</span>'
+              : r.remark)
+            : '';
           tr.innerHTML = '<td style="font-size:11px;white-space:nowrap;">' + dt + '</td>' +
             '<td style="font-family:monospace;font-size:11px;">' + (r.item_code || '—') + '</td>' +
             '<td>' + (r.item_name || '—') + '</td>' +
@@ -2137,7 +2143,7 @@ var attendees = [];
             '<td style="font-family:monospace;">' + (r.damaged_qty !== null && r.damaged_qty !== undefined ? r.damaged_qty : '—') + '</td>' +
             '<td style="font-family:monospace;">' + (r.expired_qty !== null && r.expired_qty !== undefined ? r.expired_qty : '—') + '</td>' +
             '<td style="font-size:11px;">' + (r.warehouse || '—') + '</td>' +
-            '<td style="font-size:11px;color:#666;">' + (r.remark || '') + '</td>';
+            '<td style="font-size:11px;color:#666;">' + remarkHtml + '</td>';
           tb.appendChild(tr);
         });
         tbl.style.display = 'table';
@@ -2211,28 +2217,22 @@ var attendees = [];
           if (r1.error) { alert('Failed to approve: ' + r1.error.message); return; }
           sb.from('items').update({ count_qty: newQty }).eq('id', itemId).then(function(r2) {
             if (r2.error) { alert('Item update failed: ' + r2.error.message); return; }
-            // Mark the original audit row as edited (preserves original count_qty for trail)
+            // Update the original audit row: set approved qty, approval remark, and edited_* if columns exist
             if (adj.audit_id) {
+              var approver = state.ssoUserName || 'Admin';
+              var approvalRemark = 'Qty approved: ' + adj.old_qty + ' \u2192 ' + newQty + ' \u00b7 approved by ' + approver;
               sb.from('item_audit')
-                .update({ edited_qty: newQty, edited_by: state.ssoUserName || 'Admin' })
+                .update({
+                  count_qty: newQty,
+                  remark: approvalRemark,
+                  edited_qty: newQty,
+                  edited_by: approver
+                })
                 .eq('id', adj.audit_id)
-                .then(function() {});
+                .then(function(upRes) {
+                  if (upRes && upRes.error) { console.error('item_audit update error:', upRes.error.message); }
+                });
             }
-            // Insert approval audit trail record
-            var approver = state.ssoUserName || 'Admin';
-            var trailRow = {
-              id: 'AUD-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-              session_id: adj.session_id,
-              item_id: itemId,
-              item_code: adj.item_code || '',
-              item_name: adj.item_name || '',
-              submitted_by: approver,
-              count_qty: newQty,
-              damaged_qty: null,
-              expired_qty: null,
-              remark: 'Qty approved: ' + adj.old_qty + ' \u2192 ' + newQty + ' (requested by ' + (adj.submitted_by || '?') + ')'
-            };
-            sb.from('item_audit').insert(trailRow).then(function() {});
             // Update local cache
             var itm = state.items.find(function(x){ return x.id === itemId; });
             if (itm) itm.cnt = newQty;
