@@ -242,18 +242,24 @@ var attendees = [];
     function pairOpts() { return state.pairs.map(function (p) { return '<option value="' + p.id + '">' + p.c + ' / ' + p.k + '</option>'; }).join(''); }
     function populateItemFilters() { var grps = [], whs = []; state.items.forEach(function (i) { if (i.grp && grps.indexOf(i.grp) === -1) grps.push(i.grp); var w = i.wh; if (w && whs.indexOf(w) === -1) whs.push(w); }); grps.sort(); whs.sort(); var gs = document.getElementById('item-grp-filter'), ws = document.getElementById('item-wh-filter'); if (!gs) return; var cg = gs.value, cw = ws.value; gs.innerHTML = '<option value="">All groups</option>' + grps.map(function (g) { return '<option>' + g + '</option>'; }).join(''); ws.innerHTML = '<option value="">All warehouses</option>' + whs.map(function (w) { return '<option>' + w + '</option>'; }).join(''); if (cg) gs.value = cg; if (cw) ws.value = cw; }
     function renderItems(filter, search) {
-      state.lastCheckedRow = null; filter = filter || document.getElementById('item-status-filter').value || 'all'; search = (typeof search === 'string' ? search : '').toLowerCase(); var grp = document.getElementById('item-grp-filter').value; var wh = document.getElementById('item-wh-filter').value; var entity = cs() ? cs().entity : ''; var rc = isRC(); document.getElementById('col-pair').style.display = rc ? '' : 'none'; document.getElementById('col-src').style.display = rc ? '' : 'none'; var sapBtn = document.getElementById('btn-import-sap'); if (sapBtn) sapBtn.style.display = rc ? 'none' : ''; var tb = document.getElementById('items-tbody'); tb.innerHTML = ''; var filtered = state.items.filter(function (i) { var mf = filter === 'all' || (filter === 'active' && !i.dropped) || (filter === 'dropped' && i.dropped); var ms = !search || i.code.toLowerCase().includes(search) || i.name.toLowerCase().includes(search) || (i.batch && i.batch !== '—' && i.batch.toLowerCase().includes(search)); var mg = !grp || i.grp === grp; var mw = !wh || i.wh === wh; var me = !entity || i.entity === entity; return mf && ms && mg && mw && me; }); state._filteredItems = filtered;
+      state.lastCheckedRow = null; filter = filter || document.getElementById('item-status-filter').value || 'all'; search = (typeof search === 'string' ? search : '').toLowerCase(); var grp = document.getElementById('item-grp-filter').value; var wh = document.getElementById('item-wh-filter').value; var entity = cs() ? cs().entity : ''; var rc = isRC(); document.getElementById('col-pair').style.display = rc ? '' : 'none'; document.getElementById('col-src').style.display = ''; var sapBtn = document.getElementById('btn-import-sap'); if (sapBtn) sapBtn.style.display = rc ? 'none' : ''; var tb = document.getElementById('items-tbody'); tb.innerHTML = ''; var filtered = state.items.filter(function (i) { var mf = filter === 'all' || (filter === 'active' && !i.dropped) || (filter === 'dropped' && i.dropped) || (filter === 'matched' && i.itemStatus === 'Matched') || (filter === 'variance' && i.itemStatus === 'Variance') || (filter === 'new_item' && i.itemStatus === 'New item'); var ms = !search || i.code.toLowerCase().includes(search) || i.name.toLowerCase().includes(search) || (i.batch && i.batch !== '—' && i.batch.toLowerCase().includes(search)); var mg = !grp || i.grp === grp; var mw = !wh || i.wh === wh; var me = !entity || i.entity === entity; return mf && ms && mg && mw && me; }); state._filteredItems = filtered;
       if (state._sortCol && state._sortKeyMap[state._sortCol]) { var _sk = state._sortKeyMap[state._sortCol]; filtered = filtered.slice().sort(function(a,b){ var av=a[_sk], bv=b[_sk]; if(av===null||av===undefined)av=''; if(bv===null||bv===undefined)bv=''; return(typeof av==='number'&&typeof bv==='number'?av-bv:String(av).localeCompare(String(bv),undefined,{numeric:true}))*state._sortDir; }); }
       var totalPages = Math.ceil(filtered.length / state._itemsPerPage) || 1; if (state._itemPage >= totalPages) state._itemPage = totalPages - 1; if (state._itemPage < 0) state._itemPage = 0; var pageItems = filtered.slice(state._itemPage * state._itemsPerPage, (state._itemPage + 1) * state._itemsPerPage); var subEl = document.getElementById('items-sub'); if (subEl) { subEl.textContent = 'Showing ' + filtered.length + ' items' + (totalPages > 1 ? ' · page ' + (state._itemPage + 1) + '/' + totalPages : ''); } var selAllBtn = document.getElementById('btn-sel-all'); if (selAllBtn) { selAllBtn.textContent = 'Select all ' + filtered.length; } var pager = document.getElementById('items-pager'); if (pager) { if (totalPages > 1) { pager.style.display = 'flex'; document.getElementById('items-pager-info').textContent = (state._itemPage * state._itemsPerPage + 1) + '–' + Math.min((state._itemPage + 1) * state._itemsPerPage, filtered.length) + ' of ' + filtered.length + ' items'; document.getElementById('items-pager-prev').disabled = state._itemPage === 0; document.getElementById('items-pager-next').disabled = state._itemPage >= totalPages - 1; } else { pager.style.display = 'none'; } } pageItems.forEach(function (item) {
         var tr = document.createElement('tr'); if (item.dropped) tr.style.opacity = '.45';
         var pcell = rc ? '<td><select class="select" style="font-size:11px;padding:3px 7px;width:auto;" onchange="changeItemPair(\'' + item.id + '\',this.value)"><option value=""></option>' + pairOpts().replace('value="' + (item.pairId || '') + '"', 'value="' + (item.pairId || '') + '" selected') + '</select></td>' : '';
         var statusBadgeClass = item.itemStatus === 'New item' ? 'b-purple' : item.itemStatus === 'Not found' ? 'b-danger' : item.itemStatus === 'Matched' ? 'b-success' : 'b-warn';
-        var srcCell = rc ? '<td>' + (item.itemStatus ? '<span class="badge ' + statusBadgeClass + '">' + item.itemStatus + '</span>' : '<span style="color:#aaa;font-size:11px;">\u2014</span>') + '</td>' : '';
+        var srcCell = '<td>' + (item.itemStatus ? '<span class="badge ' + statusBadgeClass + '">' + item.itemStatus + '</span>' : '<span style="color:#aaa;font-size:11px;">\u2014</span>') + '</td>';
         var pairName = (rc && (item.cnt === null || item.cnt === undefined)) ? '\u2014' : (item.pairId ? (function(){ var p = state.pairs.find(function(x){ return x.id === item.pairId; }); return p ? p.c + ' / ' + p.k : (item.assignedTo || '\u2014'); })() : (item.assignedTo || '\u2014'));
         var photoBtn = item.photos && item.photos.length ? '<button class="photo-link-btn" onclick="openPhotoGallery(\'' + item.id + '\')">&#128247; ' + item.photos.length + '</button>' : '<span style="color:#aaa;font-size:11px;">\u2014</span>';
         var p1 = rc ? (_parentItems[item.code] || null) : null;
         var p1Cells = rc ? ('<td style="font-family:monospace;font-size:11px;">' + (p1 && p1.cnt !== null && p1.cnt !== undefined ? p1.cnt : '\u2014') + '</td><td style="font-size:11px;">' + (p1 && p1.by ? p1.by : '\u2014') + '</td><td style="font-family:monospace;font-size:11px;">' + (p1 && p1.bin ? p1.bin : '\u2014') + '</td>') : '';
-        tr.innerHTML = '<td><input type="checkbox" data-id="' + item.id + '"' + (state.selItems.has(item.id) ? ' checked' : '') + ' onclick="rowCheckClick(event,this)"/></td><td style="font-family:monospace;font-size:11px;">' + item.code + '</td><td>' + item.name + '</td><td>' + item.grp + '</td><td style="font-size:11px;">' + item.batch + '</td><td>' + item.uom + '</td>' + '<td style="font-size:11px;">' + (item.pkg || '\u2014') + '</td>' + '<td style="font-size:11px;">' + (item.expiry || '\u2014') + '</td>' + '<td style="font-size:11px;">' + (item.category || '\u2014') + '</td>' + '<td style="font-family:monospace;">' + item.sap + '</td>' + '<td>' + (item.cnt !== null && item.cnt !== undefined ? '<span class="qty-counted">' + item.cnt + '</span>' : '<span class="qty-null">—</span>') + '</td>' + '<td>' + (item.dmg !== null && item.dmg !== undefined ? '<span class="qty-dmg">' + item.dmg + '</span>' : '<span class="qty-null">—</span>') + '</td>' + '<td>' + (item.expQty !== null && item.expQty !== undefined ? '<span class="qty-exp">' + item.expQty + '</span>' : '<span class="qty-null">—</span>') + '</td>' + '<td style="font-size:11px;">' + pairName + '</td>' + '<td style="font-family:monospace;font-size:11px;color:var(--text-2);">' + (item.wh || '\u2014') + '</td>' + '<td style="font-family:monospace;font-size:11px;">' + item.warehouse + '</td>' + '<td>' + photoBtn + '</td>' + pcell + srcCell + p1Cells + '<td><span class="badge ' + (item.dropped ? 'is-drop' : 'is-active') + '">' + (item.dropped ? 'Dropped' : 'Active') + '</span></td><td>' + (item.dropped ? '<button class="btn btn-sm rec-btn" onclick="toggleItem(\'' + item.id + '\')">Recover</button>' : '<button class="btn btn-sm drop-btn" onclick="toggleItem(\'' + item.id + '\')">Drop</button>') + '</td>'; tb.appendChild(tr);
+        var _rem = item.remark || '';
+        var remarkCell = '<td style="font-size:11px;color:var(--text-2);max-width:140px;">'
+          + (_rem.length === 0 ? '<span style="color:#aaa;">\u2014</span>'
+            : _rem.length <= 20 ? _rem
+            : '<span style="cursor:pointer;color:var(--primary);text-decoration:underline dotted;" data-remark="' + _rem.replace(/"/g,'&quot;') + '" onclick="showRemarkPopup(this.dataset.remark)">' + _rem.slice(0, 20) + '\u2026</span>')
+          + '</td>';
+        tr.innerHTML = '<td><input type="checkbox" data-id="' + item.id + '"' + (state.selItems.has(item.id) ? ' checked' : '') + ' onclick="rowCheckClick(event,this)"/></td><td style="font-family:monospace;font-size:11px;">' + item.code + '</td><td>' + item.name + '</td><td>' + item.grp + '</td><td style="font-size:11px;">' + item.batch + '</td><td>' + item.uom + '</td>' + '<td style="font-size:11px;">' + (item.pkg || '\u2014') + '</td>' + '<td style="font-size:11px;">' + (item.expiry || '\u2014') + '</td>' + '<td style="font-size:11px;">' + (item.category || '\u2014') + '</td>' + '<td style="font-family:monospace;">' + item.sap + '</td>' + '<td>' + (item.cnt !== null && item.cnt !== undefined ? '<span class="qty-counted">' + item.cnt + '</span>' : '<span class="qty-null">—</span>') + '</td>' + '<td>' + (item.dmg !== null && item.dmg !== undefined ? '<span class="qty-dmg">' + item.dmg + '</span>' : '<span class="qty-null">—</span>') + '</td>' + '<td>' + (item.expQty !== null && item.expQty !== undefined ? '<span class="qty-exp">' + item.expQty + '</span>' : '<span class="qty-null">—</span>') + '</td>' + '<td style="font-size:11px;">' + pairName + '</td>' + '<td style="font-family:monospace;font-size:11px;color:var(--text-2);">' + (item.wh || '\u2014') + '</td>' + '<td style="font-family:monospace;font-size:11px;">' + item.warehouse + '</td>' + remarkCell + '<td>' + photoBtn + '</td>' + pcell + srcCell + p1Cells + '<td><span class="badge ' + (item.dropped ? 'is-drop' : 'is-active') + '">' + (item.dropped ? 'Dropped' : 'Active') + '</span></td><td>' + (item.dropped ? '<button class="btn btn-sm rec-btn" onclick="toggleItem(\'' + item.id + '\')">Recover</button>' : '<button class="btn btn-sm drop-btn" onclick="toggleItem(\'' + item.id + '\')">Drop</button>') + '</td>'; tb.appendChild(tr);
       }); updateSel(); applyItemColVisibility(); applyColOrder(); updateSortIndicators();
       var baw = document.getElementById('bulk-assign-wrap');
       if (baw) { baw.style.display = rc ? 'flex' : 'none'; if (rc) renderBulkPairs(); }
@@ -452,6 +458,23 @@ var attendees = [];
         + '</tbody></table>';
     }
     function closeDrilldown() { document.getElementById('drilldown-wrap').style.display = 'none'; }
+    function showRemarkPopup(text) {
+      var wrap = document.getElementById('remark-popup-wrap');
+      if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.id = 'remark-popup-wrap';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(15,23,42,0.45);display:flex;align-items:center;justify-content:center;padding:20px;';
+        wrap.innerHTML = '<div style="background:#fff;border-radius:12px;padding:20px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.18);">'
+          + '<div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.11em;margin-bottom:10px;">Remark</div>'
+          + '<div id="remark-popup-text" style="font-size:14px;color:#0f172a;line-height:1.6;white-space:pre-wrap;word-break:break-word;"></div>'
+          + '<button class="btn" style="margin-top:16px;width:100%;" onclick="document.getElementById(\'remark-popup-wrap\').style.display=\'none\'">Close</button>'
+          + '</div>';
+        wrap.addEventListener('click', function(e) { if (e.target === wrap) wrap.style.display = 'none'; });
+        document.body.appendChild(wrap);
+      }
+      document.getElementById('remark-popup-text').textContent = text;
+      wrap.style.display = 'flex';
+    }
     function renderGallery() {
       var grid = document.getElementById('gallery-grid'); grid.innerHTML = '';
       var icons = ['&#128230;', '&#128295;', '&#129524;'];
@@ -537,7 +560,7 @@ var attendees = [];
         var allRows = [];
         function fetchPage(from) {
           sb.from('items')
-            .select('id, code, name, count_qty, sap_qty, item_status, bin_location, batch, uom, new_item, pair_id, assigned_to, dropped, photos, group, entity, wh_code, submitted_by')
+            .select('id, code, name, count_qty, sap_qty, item_status, bin_location, damaged_qty, expired_qty, remark, batch, uom, new_item, pair_id, assigned_to, dropped, photos, group, entity, wh_code, submitted_by')
             .eq('session_id', state.curSessId)
             .order('created_at', { ascending: false })
             .range(from, from + 999)
@@ -704,29 +727,20 @@ var attendees = [];
         .finally(function () { hideImportLoading(); btn.disabled = false; btn.textContent = '\u2191 Import from SAP'; });
     }
 
-    // ── Bin Combobox ─────────────────────────────────────────────────────────
-    var _binOpts = [];    // [{id, name}]
-    var _binVal  = '';    // currently selected id
+    // ── Bin Combobox (multi-select) ──────────────────────────────────────────
+    var _binOpts = [];        // [{id, name}]
+    var _binSelections = [];  // [{id, qty}]
 
     function binComboSetOptions(bins) {
       _binOpts = bins || [];
     }
-    function binComboSetValue(val) {
-      _binVal = val || '';
+    function binSelReset() {
+      _binSelections = [];
       var inp = document.getElementById('cvd-bin-input');
-      if (!inp) return;
-      if (!val) { inp.value = ''; return; }
-      var match = _binOpts.find(function(b){ return b.id === val; });
-      inp.value = match ? (match.name && match.name !== match.id ? match.id + ' \u2014 ' + match.name : match.id) : val;
-    }
-    function binComboGetValue() {
-      // Only return a value if it was selected from the list
-      if (!_binVal) return null;
-      var match = _binOpts.find(function(b){ return b.id === _binVal; });
-      return match ? match.id : null;
+      if (inp) inp.value = '';
+      renderBinSelections();
     }
     function binComboOpen() {
-      _binVal = _binVal || '';
       binComboRender(document.getElementById('cvd-bin-input').value);
       var dd = document.getElementById('cvd-bin-dropdown');
       if (dd) dd.style.display = '';
@@ -745,7 +759,6 @@ var attendees = [];
       if (dd.style.display === 'none') binComboOpen(); else binComboClose();
     }
     function binComboFilter() {
-      _binVal = ''; // clear selection when user types manually
       binComboRender(document.getElementById('cvd-bin-input').value);
       var dd = document.getElementById('cvd-bin-dropdown');
       if (dd) dd.style.display = '';
@@ -761,12 +774,12 @@ var attendees = [];
         : _binOpts;
       if (!filtered.length) {
         dd.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:var(--text-3);">'
-          + (q ? 'No bins matched \u201c' + q + '\u201d \u2014 your input will be saved as-is.' : 'No bins loaded.') + '</div>';
+          + (q ? 'No bins matched \u201c' + q + '\u201d' : 'No bins loaded.') + '</div>';
         return;
       }
       dd.innerHTML = filtered.map(function(b) {
         var label = b.name && b.name !== b.id ? b.id + ' \u2014 ' + b.name : b.id;
-        var sel = b.id === _binVal;
+        var sel = !!_binSelections.find(function(s){ return s.id === b.id; });
         return '<div class="bin-opt" onmousedown="event.preventDefault()" onclick="binComboSelect(\'' + b.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')"'
           + ' style="padding:8px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;'
           + (sel ? 'background:var(--accent-light);font-weight:600;' : '') + '">'
@@ -776,9 +789,82 @@ var attendees = [];
       }).join('');
     }
     function binComboSelect(id) {
-      _binVal = id;
-      binComboSetValue(id);
-      binComboClose();
+      var existing = _binSelections.find(function(s){ return s.id === id; });
+      if (existing) {
+        // Deselect — keep dropdown open so user can re-pick
+        _binSelections = _binSelections.filter(function(s){ return s.id !== id; });
+        binComboRender(document.getElementById('cvd-bin-input').value);
+        renderBinSelections();
+      } else {
+        // Select — close dropdown, focus qty input
+        _binSelections.push({ id: id, qty: '' });
+        binComboClose();
+        renderBinSelections();
+        setTimeout(function() {
+          var el = document.getElementById('cvd-bin-single-qty');
+          if (!el) {
+            var rows = document.querySelectorAll('#cvd-bin-list .cv-qty-input');
+            if (rows.length) el = rows[rows.length - 1];
+          }
+          if (el) el.focus();
+        }, 30);
+      }
+    }
+    function renderBinSelections() {
+      var list = document.getElementById('cvd-bin-list');
+      if (!list) return;
+      var totalEl = document.getElementById('cvd-bin-total');
+      if (!_binSelections.length) {
+        list.innerHTML = '';
+        if (totalEl) totalEl.style.display = 'none';
+        return;
+      }
+      if (_binSelections.length === 1) {
+        // Single bin: show a focused qty input, no row list
+        var s = _binSelections[0];
+        var match = _binOpts.find(function(b){ return b.id === s.id; });
+        var label = match ? (match.name && match.name !== match.id ? match.id + ' \u2014 ' + match.name : match.id) : s.id;
+        list.innerHTML = '<div style="margin-top:4px;">'
+          + '<div style="font-size:11px;font-weight:600;color:var(--primary);margin-bottom:4px;">Qty for <span style="font-family:monospace;">' + label + '</span></div>'
+          + '<input id="cvd-bin-single-qty" class="cv-qty-input" type="number" min="0" placeholder="0"'
+          + ' value="' + (s.qty !== '' ? s.qty : '') + '" oninput="binSelQtyChange(0,this.value)" />'
+          + '</div>';
+        if (totalEl) totalEl.style.display = 'none';
+        return;
+      }
+      // Multiple bins: show row list with per-bin qty inputs
+      list.innerHTML = _binSelections.map(function(s, idx) {
+        var match = _binOpts.find(function(b){ return b.id === s.id; });
+        var label = match ? (match.name && match.name !== match.id ? match.id + ' \u2014 ' + match.name : match.id) : s.id;
+        return '<div class="cvd-bin-row">'
+          + '<span class="cvd-bin-label">' + label + '</span>'
+          + '<input class="cv-qty-input" type="number" min="0" placeholder="0" value="' + (s.qty !== '' ? s.qty : '') + '"'
+          + ' oninput="binSelQtyChange(' + idx + ',this.value)"'
+          + ' style="width:80px;height:36px;font-size:15px;padding:0 8px;" />'
+          + '<button type="button" class="cvd-bin-remove" onclick="binSelRemove(' + idx + ')" title="Remove">\u2715</button>'
+          + '</div>';
+      }).join('');
+      _updateBinTotal();
+    }
+    function _updateBinTotal() {
+      var total = _binSelections.reduce(function(sum, s){ return sum + (s.qty !== '' ? +s.qty : 0); }, 0);
+      var totalEl = document.getElementById('cvd-bin-total');
+      if (!totalEl) return;
+      if (_binSelections.length > 1) {
+        totalEl.style.display = '';
+        document.getElementById('cvd-bin-total-val').textContent = total;
+      } else {
+        totalEl.style.display = 'none';
+      }
+    }
+    function binSelQtyChange(idx, val) {
+      if (_binSelections[idx]) _binSelections[idx].qty = val;
+      _updateBinTotal();
+    }
+    function binSelRemove(idx) {
+      _binSelections.splice(idx, 1);
+      renderBinSelections();
+      binComboRender(document.getElementById('cvd-bin-input').value);
     }
 
     // ── Scan & Count ──────────────────────────────────────────────────────────
@@ -878,18 +964,23 @@ var attendees = [];
         var editedBadge = isEdited
           ? ' <span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;font-size:10px;font-weight:700;padding:1px 6px;vertical-align:middle;">Edited</span>'
           : '';
+        var itemData = state.countItems.find(function(x){ return x.id === row.item_id; })
+          || state.items.find(function(x){ return x.id === row.item_id; });
+        var batch = row.batch || (itemData && itemData.batch && itemData.batch !== '\u2014' ? itemData.batch : null);
         el.innerHTML =
           '<div class="cvd-hist-qty">' + qtyHtml + '</div>' +
           '<div class="cvd-hist-meta">' +
-          '<span style="font-size:13px;font-weight:600;color:var(--text-1);">' + row.item_code + '</span>' +
-          ' <span style="font-size:12px;color:var(--text-2);">' + row.item_name + '</span>' +
-          editedBadge +
-          '<br>' +
+          '<div style="font-size:13px;font-weight:700;color:var(--text-1);font-family:monospace;line-height:1.3;">' + (row.item_code || '—') + '</div>' +
+          '<div style="font-size:12px;color:var(--text-1);line-height:1.3;">' + (row.item_name || '—') + '</div>' +
+          (batch ? '<div style="font-size:11px;color:var(--text-2);line-height:1.3;">Batch: ' + batch + '</div>' : '') +
+          (editedBadge ? '<div style="margin-top:2px;">' + editedBadge + '</div>' : '') +
+          '<div style="margin-top:3px;">' +
           (row.warehouse ? '<span style="font-size:11px;color:var(--primary);font-weight:600;">' + row.warehouse + '</span>' + ' · ' : '') +
           '<span class="cvd-hist-who" style="color:' + (isSelf ? 'var(--primary)' : 'var(--text-2)') + ';">' + (row.submitted_by || '—') + '</span>' +
           (isEdited ? ' · <span style="font-size:11px;color:var(--text-3);">approved by ' + row.edited_by + '</span>' : '') +
           (sess ? ' · <span style="font-size:11px;color:var(--text-3);">' + sess.name + '</span>' : '') +
-          '<br><span class="cvd-hist-time">' + timeStr + '</span>' +
+          '</div>' +
+          '<div><span class="cvd-hist-time">' + timeStr + '</span></div>' +
           '</div>' +
           (isSelf && !isEdited ? '<div style="margin-left:auto;padding-left:8px;flex-shrink:0;">' +
             '<button class="btn btn-sm" onclick="openHistEdit(this,\'' + row.id + '\',\'' + row.item_id + '\',\'' + (row.item_code||'') + '\',\'' + (row.item_name||'').replace(/'/g,'\\\'') + '\',' + (row.count_qty||0) + ',\'' + row.session_id + '\')">Edit Qty</button>' +
@@ -1029,8 +1120,14 @@ var attendees = [];
       document.getElementById('cv-home-view').style.display = 'none';
       document.getElementById('cv-detail-view').style.display = 'none';
       document.getElementById('cv-search-view').style.display = 'block';
+      history.pushState({ stp: 'count-search' }, '');
       var ms = document.getElementById('btn-multiscan');
       if (ms) ms.style.display = (state.ssoUserRole === 'Admin' || state.ssoUserRole === 'Multiscan') ? '' : 'none';
+      var hideNew = !!(sess && sess.rc);
+      var newBtn = document.getElementById('btn-new-item');
+      var newFab = document.getElementById('btn-new-item-fab');
+      if (newBtn) newBtn.style.display = hideNew ? 'none' : '';
+      if (newFab) newFab.style.display = hideNew ? 'none' : '';
       document.getElementById('cv-gallery-view').style.display = 'none';
       document.getElementById('cv-empty').style.display = 'none';
       document.getElementById('cv-q').value = '';
@@ -1058,7 +1155,7 @@ var attendees = [];
       var isRC = !!(sess && sess.rc);
       function fetchPage(from) {
         sb.from('items')
-          .select('id, code, name, count_qty, sap_qty, item_status, bin_location, batch, uom, new_item, pair_id, assigned_to, dropped, photos, group, entity, wh_code')
+          .select('id, code, name, count_qty, sap_qty, item_status, bin_location, damaged_qty, expired_qty, remark, batch, uom, new_item, pair_id, assigned_to, dropped, photos, group, entity, wh_code')
           .eq('session_id', state.countSessId)
           .eq('dropped', false)
           .order('code', { ascending: true })
@@ -1115,7 +1212,7 @@ var attendees = [];
       var whSet = {};
       state.countItems.forEach(function(i) { if (i.wh) whSet[i.wh] = true; });
       var codes = Object.keys(whSet).sort();
-      sel.innerHTML = '<option value="">All warehouse codes</option>';
+      sel.innerHTML = '<option value="">All WH</option>';
       codes.forEach(function(c) {
         var opt = document.createElement('option');
         opt.value = c; opt.textContent = c;
@@ -1123,8 +1220,10 @@ var attendees = [];
       });
       state._countWhFilter = '';
       sel.value = '';
-      var row = document.getElementById('cv-wh-filter-row');
-      if (row) row.style.display = codes.length > 1 ? '' : 'none';
+      var whGroup = document.getElementById('cv-wh-group');
+      var show = codes.length > 1;
+      sel.style.display = show ? '' : 'none';
+      if (whGroup) whGroup.style.display = show ? '' : 'none';
     }
     function clearCountWhFilter() {
       var sel = document.getElementById('cv-wh-sel');
@@ -1254,6 +1353,7 @@ var attendees = [];
       stopScanner();
       document.getElementById('cv-search-view').style.display = 'none';
       document.getElementById('cv-detail-view').style.display = 'block';
+      history.pushState({ stp: 'count-detail' }, '');
 
       // Reset save state
       countSaveForced = false;
@@ -1278,8 +1378,7 @@ var attendees = [];
         '</div>';
 
       // Pre-fill existing values — bin location always starts blank (user must select)
-      binComboSetValue('');
-      document.getElementById('cvd-cnt').value = '';
+      binSelReset();
       document.getElementById('cvd-dmg').value = item.dmg !== null && item.dmg !== undefined ? item.dmg : '';
       document.getElementById('cvd-exp').value = item.expQty !== null && item.expQty !== undefined ? item.expQty : '';
       document.getElementById('cvd-remark').value = item.remark || '';
@@ -1341,22 +1440,19 @@ var attendees = [];
       if (!item) return;
       var btn = document.getElementById('cvd-save-btn');
 
-      var binVal = binComboGetValue() || null;
-      var cntRaw = document.getElementById('cvd-cnt').value;
-      var cntVal = cntRaw !== '' ? +cntRaw : null;
+      var newBinIds = _binSelections.map(function(s){ return s.id; }).filter(Boolean);
+      var binVal = newBinIds.length ? newBinIds.join('; ') : null;
+      var hasEmptyQty = _binSelections.some(function(s){ return s.qty === '' || s.qty === null || s.qty === undefined; });
+      var cntVal = _binSelections.length ? _binSelections.reduce(function(sum, s){ return sum + (s.qty !== '' ? +s.qty : 0); }, 0) : null;
 
       // Validate required fields
       var msg = document.getElementById('cvd-msg');
-      if (!binVal && cntVal === null) {
-        msg.className = 'banner bn-danger'; msg.textContent = 'Bin location and count qty are required.'; msg.style.display = '';
-        return;
-      }
       if (!binVal) {
-        msg.className = 'banner bn-danger'; msg.textContent = 'Bin location is required.'; msg.style.display = '';
+        msg.className = 'banner bn-danger'; msg.textContent = 'Select at least one bin location.'; msg.style.display = '';
         return;
       }
-      if (cntVal === null) {
-        msg.className = 'banner bn-danger'; msg.textContent = 'Count qty is required.'; msg.style.display = '';
+      if (hasEmptyQty) {
+        msg.className = 'banner bn-danger'; msg.textContent = 'Enter a count qty for each bin location.'; msg.style.display = '';
         return;
       }
       msg.style.display = 'none';
@@ -1367,7 +1463,7 @@ var attendees = [];
 
       // Accumulate bin locations (semicolon-joined, no duplicates)
       var prevBins = (item.warehouse && item.warehouse !== '—') ? item.warehouse.split(';').map(function(b){ return b.trim(); }).filter(Boolean) : [];
-      if (binVal && prevBins.indexOf(binVal) === -1) { prevBins.push(binVal); }
+      newBinIds.forEach(function(bid){ if (prevBins.indexOf(bid) === -1) prevBins.push(bid); });
       var accBin = prevBins.length ? prevBins.join('; ') : null;
 
       // Blind-count mismatch check (non-recount sessions only, first attempt only)
@@ -1414,12 +1510,21 @@ var attendees = [];
           item.remark = remarkVal || ''; item.photos = allPhotos;
           if (state.countPairId) item.pairId = state.countPairId;
           countSaveForced = false;
-          // Recount: immediately reflect Matched / Variance status
-          var _sess = state.S.find(function(x){ return x.id === state.countSessId; });
-          if (_sess && _sess.rc && accCnt !== null) {
+          // Always reflect Matched / Variance status when count is saved
+          if (accCnt !== null) {
             var newStatus = (accCnt === item.sap) ? 'Matched' : 'Variance';
             item.itemStatus = newStatus;
             sb.from('items').update({ item_status: newStatus }).eq('id', countItemId).then(function(){});
+            // Sync admin item master cache if loaded
+            var masterItem = state.items.find(function(x){ return x.id === countItemId; });
+            if (masterItem) {
+              masterItem.itemStatus = newStatus;
+              masterItem.cnt = accCnt;
+              masterItem.dmg = dmgVal;
+              masterItem.expQty = expVal;
+              masterItem.remark = remarkVal || '';
+              masterItem.warehouse = accBin || '—';
+            }
           }
           // Insert audit record
           var auditRow = {
@@ -1641,6 +1746,7 @@ var attendees = [];
         document.getElementById(id).style.display = 'none';
       });
       document.getElementById('cv-newitem-view').style.display = '';
+      history.pushState({ stp: 'count-newitem' }, '');
       // Reset form
       document.getElementById('ni-code').value = prefillCode || '';
       ['ni-name','ni-uom','ni-serial','ni-bin','ni-remark'].forEach(function(id){ document.getElementById(id).value = ''; });
@@ -1765,6 +1871,7 @@ var attendees = [];
         document.getElementById(id).style.display = 'none';
       });
       document.getElementById('cv-multiscan-view').style.display = '';
+      history.pushState({ stp: 'count-multiscan' }, '');
       document.getElementById('ms-input').value = '';
       document.getElementById('ms-msg').style.display = 'none';
       document.getElementById('ms-log').innerHTML = '';
@@ -1898,6 +2005,60 @@ var attendees = [];
     }
 
     function closePhotoModal() { var el = document.getElementById('photo-lightbox'); if (el) el.remove(); }
+
+    // ── Warehouse Layout Images ────────────────────────────────────────────────
+    // Edit this array to add your warehouse floor plan images.
+    // Each entry: { label: 'Display name', src: 'URL or relative path to image' }
+    // Leave src as '' to show a placeholder tile until you add the image.
+    var LAYOUT_IMAGES = [
+      { label: 'Ground Floor', src: '' },
+      { label: 'Level 1', src: '' },
+      { label: 'Cold Storage', src: '' },
+      { label: 'Receiving Bay', src: '' },
+    ];
+
+    function openLayoutModal() {
+      var grid = document.getElementById('layout-img-grid');
+      var empty = document.getElementById('layout-no-images');
+      grid.innerHTML = '';
+      var hasAny = LAYOUT_IMAGES.length > 0;
+      empty.style.display = hasAny ? 'none' : '';
+      grid.style.display = hasAny ? '' : 'none';
+      LAYOUT_IMAGES.forEach(function(img) {
+        var card = document.createElement('div');
+        card.className = 'layout-img-card';
+        if (img.src) {
+          card.innerHTML =
+            '<img src="' + img.src + '" class="layout-img-thumb" alt="' + img.label + '" loading="lazy" />' +
+            '<div class="layout-img-label">' + img.label + '</div>';
+          card.onclick = function() { openLayoutLightbox(img.src, img.label); };
+        } else {
+          card.innerHTML =
+            '<div class="layout-img-placeholder">' +
+              '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M2 9h20M9 9v12"/></svg>' +
+              '<div style="font-size:11px;margin-top:6px;text-align:center;">No image<br>Add src in LAYOUT_IMAGES</div>' +
+            '</div>' +
+            '<div class="layout-img-label">' + img.label + '</div>';
+        }
+        grid.appendChild(card);
+      });
+      document.getElementById('layout-modal-wrap').style.display = '';
+    }
+
+    function closeLayoutModal() {
+      document.getElementById('layout-modal-wrap').style.display = 'none';
+    }
+
+    function openLayoutLightbox(src, label) {
+      var lb = document.getElementById('layout-lightbox');
+      document.getElementById('layout-lightbox-img').src = src;
+      document.getElementById('layout-lightbox-label').textContent = label;
+      lb.style.display = 'flex';
+    }
+
+    function closeLayoutLightbox() {
+      document.getElementById('layout-lightbox').style.display = 'none';
+    }
 
     // ── Role-based admin guard ─────────────────────────────────────────────────
     function requireAdmin(fn) {
@@ -2526,6 +2687,7 @@ window.buildDashboard = buildDashboard;
 window.openDrilldown = openDrilldown;
 window.drilldownTab = drilldownTab;
 window.closeDrilldown = closeDrilldown;
+window.showRemarkPopup = showRemarkPopup;
 window.renderGallery = renderGallery;
 window.setGalleryStatus = setGalleryStatus;
 
@@ -2551,14 +2713,16 @@ window.hideImportLoading = hideImportLoading;
 window.importUsers = importUsers;
 window.importFromSAP = importFromSAP;
 window.binComboSetOptions = binComboSetOptions;
-window.binComboSetValue = binComboSetValue;
-window.binComboGetValue = binComboGetValue;
 window.binComboOpen = binComboOpen;
 window.binComboClose = binComboClose;
 window.binComboToggle = binComboToggle;
 window.binComboFilter = binComboFilter;
 window.binComboRender = binComboRender;
 window.binComboSelect = binComboSelect;
+window.binSelReset = binSelReset;
+window.renderBinSelections = renderBinSelections;
+window.binSelQtyChange = binSelQtyChange;
+window.binSelRemove = binSelRemove;
 window.goHistory = goHistory;
 window.loadHistory = loadHistory;
 window.renderHistory = renderHistory;
@@ -2601,6 +2765,10 @@ window.processMultiScan = processMultiScan;
 window.openPhotoGallery = openPhotoGallery;
 window.closePhotoModal = closePhotoModal;
 window.photoLightboxNav = photoLightboxNav;
+window.openLayoutModal = openLayoutModal;
+window.closeLayoutModal = closeLayoutModal;
+window.openLayoutLightbox = openLayoutLightbox;
+window.closeLayoutLightbox = closeLayoutLightbox;
 window.requireAdmin = requireAdmin;
 
 
@@ -2638,3 +2806,21 @@ window.navigateByRole = navigateByRole;
 window.openAdminUsers = openAdminUsers;
 window.makeUserAdmin = makeUserAdmin;
 window.sbQuery = sbQuery;
+
+// ── Scan & Count — browser back-button support ───────────────────────────
+window.addEventListener('popstate', function (e) {
+  var countPage = document.getElementById('page-count');
+  if (!countPage || !countPage.classList.contains('active')) return;
+  var stp = (e.state && e.state.stp) || '';
+  if (stp === 'count-search') {
+    showCountSearch();
+  } else if (stp === 'count-detail' || stp === 'count-newitem' || stp === 'count-multiscan') {
+    // Forward entry — shouldn't normally reach here via back; just go to search
+    showCountSearch();
+    history.pushState({ stp: 'count-search' }, '');
+  } else {
+    // Back past the session-select push → return to home screen
+    showCountHome();
+  }
+});
+

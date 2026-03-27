@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -479,6 +479,9 @@
                   <option value="all">All items</option>
                   <option value="active">Active</option>
                   <option value="dropped">Dropped</option>
+                  <option value="matched">Matched</option>
+                  <option value="variance">Variance</option>
+                  <option value="new_item">New Item</option>
                 </select>
                 <select class="select" style="width:auto;" id="item-grp-filter" onchange="filterItems()">
                   <option value="">All groups</option>
@@ -504,6 +507,7 @@
                     <label class="col-toggle-item"><input type="checkbox" checked onchange="toggleItemCol('col-by',this.checked)"> Counted By</label>
                     <label class="col-toggle-item"><input type="checkbox" checked onchange="toggleItemCol('col-whcode',this.checked)"> Warehouse Code</label>
                     <label class="col-toggle-item"><input type="checkbox" checked onchange="toggleItemCol('col-binloc',this.checked)"> Bin Location</label>
+                    <label class="col-toggle-item"><input type="checkbox" checked onchange="toggleItemCol('col-remark',this.checked)"> Remark</label>
                     <label class="col-toggle-item"><input type="checkbox" checked onchange="toggleItemCol('col-photos',this.checked)"> Photos</label>
                   </div>
                 </div>
@@ -538,9 +542,10 @@
                     <th data-colkey="by" data-col="col-by" title="Drag to reorder">Counted By</th>
                     <th data-colkey="whcode" data-col="col-whcode" title="Drag to reorder">Warehouse Code</th>
                     <th data-colkey="binloc" data-col="col-binloc" title="Drag to reorder">Bin Location</th>
+                    <th data-col="col-remark" title="Drag to reorder">Remark</th>
                     <th data-colkey="photos" data-col="col-photos" title="Drag to reorder">Photos</th>
                     <th data-colkey="pair" id="col-pair" style="display:none;" title="Drag to reorder">Assigned To</th>
-                    <th data-colkey="src" id="col-src" style="display:none;" title="Drag to reorder">Item Status</th>
+                    <th data-colkey="src" id="col-src" title="Drag to reorder">Count Status</th>
                     <th id="col-p1cnt" style="display:none;" title="Count qty from the linked first-count session">1st Count</th>
                     <th id="col-p1by" style="display:none;" title="Counted by in first-count session">1st Counted By</th>
                     <th id="col-p1bin" style="display:none;" title="Bin location from first-count session">1st Bin</th>
@@ -831,11 +836,18 @@
 
           <!-- Search / scan view -->
           <div id="cv-search-view" style="display:none;">
-            <!-- Active session pill -->
+            <!-- Active session bar with inline warehouse filter -->
             <div class="cv-active-bar" id="cv-active-bar">
-              <div class="cv-active-dot"></div>
-              <span class="cv-active-name" id="cv-active-name">—</span>
-              <button class="cv-active-change" onclick="changeCountSession()">Change</button>
+              <div class="cv-session-info">
+                <div class="cv-active-dot"></div>
+                <span class="cv-active-name" id="cv-active-name">—</span>
+                <button class="cv-active-change" onclick="changeCountSession()">Change Session</button>
+              </div>
+              <div class="cv-wh-group" id="cv-wh-group" style="display:none;">
+                <select class="cv-wh-inline-sel" id="cv-wh-sel" onchange="countWhFilter()">
+                  <option value="">All WH</option>
+                </select>
+              </div>
             </div>
             <div id="cv-sess-banner" style="display:none;"></div>
 
@@ -853,28 +865,27 @@
                   oninput="countSearch()" onkeydown="if(event.key==='Enter')countSearch()" />
               </div>
               <div class="cv-action-row">
-                <button class="cv-btn-scan" onclick="startScanner()" id="btn-scan">
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <button class="cv-btn-action-secondary" id="btn-layout" onclick="openLayoutModal()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M2 9h20M9 9v12"/></svg>
+                  Layout
+                </button>
+                <button class="cv-btn-action-primary" onclick="startScanner()" id="btn-scan">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
                     <rect x="2" y="2" width="6" height="6" rx="1"/><rect x="16" y="2" width="6" height="6" rx="1"/>
                     <rect x="2" y="16" width="6" height="6" rx="1"/><path d="M16 16h6M16 20h6M20 16v6"/>
                     <path d="M8 12H2M12 2v6M12 10v2M12 16v6M16 12h6"/>
                   </svg>
-                  Scan Barcode
+                  Scan
                 </button>
-                <button class="cv-btn-secondary" id="btn-multiscan" style="display:none;" onclick="openMultiScan()">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                <button class="cv-btn-action-secondary" id="btn-multiscan" style="display:none;" onclick="openMultiScan()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
                   Multi-Scan
                 </button>
-                <button class="cv-btn-ghost" onclick="openNewItemForm('')">+ New</button>
+                <button class="cv-btn-action-secondary" id="btn-new-item" onclick="openNewItemForm('')">+ New</button>
               </div>
             </div>
 
-            <!-- Warehouse filter -->
-            <div class="cv-filter-row" id="cv-wh-filter-row" style="display:none;">
-              <select class="input" id="cv-wh-sel" onchange="countWhFilter()">
-                <option value="">All warehouse codes</option>
-              </select>
-            </div>
+
 
             <!-- Floating buttons (mobile only) -->
             <div id="fab-row" style="display:none;">
@@ -915,11 +926,11 @@
             <div class="cv-form-section">
               <div class="cv-form-title">Count Input</div>
               <div class="count-form-grid">
-                <div>
-                  <label class="flbl req">Bin Location</label>
+                <div class="count-form-full">
+                  <label class="flbl req">Bin Location <span style="font-weight:400;color:var(--text-3);font-size:10px;">— select one or more</span></label>
                   <div id="cvd-bin-combo" style="position:relative;">
                     <div class="cv-combo-wrap">
-                      <input id="cvd-bin-input" type="text" autocomplete="off" placeholder="Search or type bin…"
+                      <input id="cvd-bin-input" type="text" autocomplete="off" placeholder="Search or add bin…"
                         class="cv-combo-input"
                         oninput="binComboFilter()" onfocus="binComboOpen()" onblur="setTimeout(binComboClose,160)" />
                       <button type="button" tabindex="-1" class="cv-combo-chevron"
@@ -929,10 +940,8 @@
                     </div>
                     <div id="cvd-bin-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:300;background:#fff;border:0.5px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.08);max-height:200px;overflow-y:auto;"></div>
                   </div>
-                </div>
-                <div>
-                  <label class="flbl req">Counted Qty</label>
-                  <input class="cv-qty-input" id="cvd-cnt" type="number" min="0" placeholder="0" />
+                  <div id="cvd-bin-list" style="margin-top:6px;display:flex;flex-direction:column;gap:4px;"></div>
+                  <div id="cvd-bin-total" style="display:none;margin-top:4px;font-size:12px;font-weight:600;color:var(--primary);text-align:right;">Total Qty: <span id="cvd-bin-total-val">0</span></div>
                 </div>
                 <div>
                   <label class="flbl">Damaged Qty</label>
@@ -1079,6 +1088,34 @@
               </div>
             </div>
           </div>
+
+          <!-- Layout map modal -->
+          <div id="layout-modal-wrap" style="display:none;">
+            <div class="overlay" onclick="closeLayoutModal()">
+              <div class="modal layout-modal" onclick="event.stopPropagation()">
+                <div class="layout-modal-header">
+                  <div>
+                    <div class="modal-title">Warehouse Layout</div>
+                    <div class="layout-modal-sub">Tap a map to view full size</div>
+                  </div>
+                  <button class="layout-close-btn" onclick="closeLayoutModal()">&#10005;</button>
+                </div>
+                <div id="layout-img-grid" class="layout-img-grid"></div>
+                <div id="layout-no-images" style="display:none;" class="layout-empty">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M2 9h20M9 9v12"/></svg>
+                  <div>No layout images have been added yet.</div>
+                  <div style="font-size:11px;margin-top:4px;">Edit the LAYOUT_IMAGES array in main.js to add your floor plans.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Layout lightbox (fullscreen) -->
+          <div id="layout-lightbox" style="display:none;position:fixed;inset:0;background:rgba(10,15,25,0.94);z-index:10002;flex-direction:column;align-items:center;justify-content:center;" onclick="closeLayoutLightbox()">
+            <button class="layout-lb-close" onclick="closeLayoutLightbox()">&#10005;</button>
+            <img id="layout-lightbox-img" src="" alt="" style="max-width:96vw;max-height:82vh;border-radius:8px;object-fit:contain;box-shadow:0 24px 80px rgba(0,0,0,0.5);" />
+            <div id="layout-lightbox-label" class="layout-lb-label"></div>
+          </div>
         </div>
 
         <!-- ── My Count History page ── -->
@@ -1156,6 +1193,10 @@
 
   <!-- Mobile bottom navigation bar (hidden on desktop via CSS) -->
   <nav class="mobile-nav">
+    <button class="mnav-btn" id="mnav-layout" onclick="openLayoutModal()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M2 9h20M9 9v12"/></svg>
+      Layout
+    </button>
     <button class="mnav-btn active" id="mnav-sessions" onclick="goSessions(); mnavSetActive('mnav-sessions')">
       <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
         <rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3" />
