@@ -881,6 +881,7 @@ var attendees = [];
 
     // ── Count History page ────────────────────────────────────────────────────
     var _histAuditRows = [];
+    var _histAdjMap = {}; // audit_id → count_adjustments row
 
     function goHistory() {
       document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('active'); });
@@ -935,8 +936,16 @@ var attendees = [];
             opt.textContent = sess ? sess.name : sid;
             sessSelect.appendChild(opt);
           });
-          filterBar.style.display = '';
-          renderHistory();
+          // Load adjustments keyed by audit_id so we can show pending/approved state
+          var auditIds = aRes.data.map(function(r){ return r.id; });
+          sb.from('count_adjustments').select('id,audit_id,status,old_qty,new_qty,submitted_by').in('audit_id', auditIds).then(function(adjRes) {
+            _histAdjMap = {};
+            if (!adjRes.error && adjRes.data) {
+              adjRes.data.forEach(function(a){ _histAdjMap[a.audit_id] = a; });
+            }
+            filterBar.style.display = '';
+            renderHistory();
+          });
         });
       });
     }
@@ -955,6 +964,9 @@ var attendees = [];
         var isSelf = row.submitted_by === state.ssoUserName;
         var sess = state.S.find(function(s) { return s.id === row.session_id; });
         var isEdited = row.edited_qty !== null && row.edited_qty !== undefined;
+        var adj = _histAdjMap[row.id] || null;
+        var isPending = !!(adj && adj.status === 'Pending');
+        var isApproved = !!(adj && adj.status === 'Approved');
         var el = document.createElement('div');
         el.className = 'cvd-hist-row';
         var qtyHtml = isEdited
@@ -962,7 +974,9 @@ var attendees = [];
             '<span style="font-size:18px;font-weight:700;color:var(--primary);display:block;line-height:1.1;">' + row.edited_qty + '</span>'
           : '+' + (row.count_qty !== null && row.count_qty !== undefined ? row.count_qty : '—');
         var editedBadge = isEdited
-          ? ' <span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;font-size:10px;font-weight:700;padding:1px 6px;vertical-align:middle;">Edited</span>'
+          ? '<span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;font-size:10px;font-weight:700;padding:1px 6px;">Edited</span>'
+          : isPending
+          ? '<span style="background:#fef9c3;color:#a16207;border-radius:4px;font-size:10px;font-weight:700;padding:1px 6px;">Pending Approval</span>'
           : '';
         var itemData = state.countItems.find(function(x){ return x.id === row.item_id; })
           || state.items.find(function(x){ return x.id === row.item_id; });
@@ -982,7 +996,7 @@ var attendees = [];
           '</div>' +
           '<div><span class="cvd-hist-time">' + timeStr + '</span></div>' +
           '</div>' +
-          (isSelf && !isEdited ? '<div style="margin-left:auto;padding-left:8px;flex-shrink:0;">' +
+          (isSelf && !isEdited && !isPending && !isApproved ? '<div style="margin-left:auto;padding-left:8px;flex-shrink:0;">' +
             '<button class="btn btn-sm" onclick="openHistEdit(this,\'' + row.id + '\',\'' + row.item_id + '\',\'' + (row.item_code||'') + '\',\'' + (row.item_name||'').replace(/'/g,'\\\'') + '\',' + (row.count_qty||0) + ',\'' + row.session_id + '\')">Edit Qty</button>' +
             '</div>' : '');
         list.appendChild(el);
@@ -2204,6 +2218,21 @@ var attendees = [];
                 .eq('id', adj.audit_id)
                 .then(function() {});
             }
+            // Insert approval audit trail record
+            var approver = state.ssoUserName || 'Admin';
+            var trailRow = {
+              id: 'AUD-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+              session_id: adj.session_id,
+              item_id: itemId,
+              item_code: adj.item_code || '',
+              item_name: adj.item_name || '',
+              submitted_by: approver,
+              count_qty: newQty,
+              damaged_qty: null,
+              expired_qty: null,
+              remark: 'Qty approved: ' + adj.old_qty + ' \u2192 ' + newQty + ' (requested by ' + (adj.submitted_by || '?') + ')'
+            };
+            sb.from('item_audit').insert(trailRow).then(function() {});
             // Update local cache
             var itm = state.items.find(function(x){ return x.id === itemId; });
             if (itm) itm.cnt = newQty;
