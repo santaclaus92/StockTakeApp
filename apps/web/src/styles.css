@@ -4720,8 +4720,9 @@ table,
 }
 
 .cam-scanner-reticle {
-  width: 260px;
-  height: 150px;
+  width: 90vw;
+  height: 40vw;
+  max-height: 60vh;
   border: 2.5px solid rgba(255, 255, 255, 0.85);
   border-radius: 12px;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.42);

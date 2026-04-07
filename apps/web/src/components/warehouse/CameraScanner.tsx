@@ -77,11 +77,12 @@ export function CameraScanner({ onDetected, onClose }: CameraScannerProps) {
               const vw = video.videoWidth;
               const vh = video.videoHeight;
               if (vw === 0 || vh === 0) { rafRef.current = requestAnimationFrame(() => { void scan(); }); return; }
-              const cropSize = Math.min(vw, vh) * 0.65;
-              canvas.width = cropSize;
-              canvas.height = cropSize;
+              const cropW = vw * 0.9;
+              const cropH = cropW * (40 / 90);
+              canvas.width = cropW;
+              canvas.height = cropH;
               const ctx = canvas.getContext("2d");
-              ctx?.drawImage(video, (vw - cropSize) / 2, (vh - cropSize) / 2, cropSize, cropSize, 0, 0, cropSize, cropSize);
+              ctx?.drawImage(video, (vw - cropW) / 2, (vh - cropH) / 2, cropW, cropH, 0, 0, cropW, cropH);
               const barcodes = await detector.detect(canvas);
               if (barcodes.length > 0 && barcodes[0].rawValue) { handleDetected(barcodes[0].rawValue); return; }
             } catch { /* expected between frames */ }
