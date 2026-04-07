@@ -169,6 +169,7 @@ function SupabaseOtpForm({ onSignedIn }: { onSignedIn: (identity: AppIdentity) =
   const configError = getSupabaseAuthConfigError();
   const [email, setEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
+  const otpCodeRef = useRef("");
   const [otpSent, setOtpSent] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -215,7 +216,7 @@ function SupabaseOtpForm({ onSignedIn }: { onSignedIn: (identity: AppIdentity) =
                 return;
               }
 
-              const token = otpCode.trim();
+              const token = otpCodeRef.current.trim() || otpCode.trim();
               if (!token) return;
 
               setIsVerifying(true);
@@ -279,7 +280,8 @@ function SupabaseOtpForm({ onSignedIn }: { onSignedIn: (identity: AppIdentity) =
             <input
               value={otpCode}
               onChange={(event) => {
-                const val = event.target.value;
+                const val = event.target.value.replace(/\D/g, "").slice(0, 6);
+                otpCodeRef.current = val;
                 setOtpCode(val);
                 if (val.length === 6) formRef.current?.requestSubmit();
               }}
