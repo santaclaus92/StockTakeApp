@@ -1759,24 +1759,39 @@ table,
 }
 
 .sso-card {
-  width: min(360px, 100%);
+  width: min(468px, 100%);
   background: #ffffff;
   border-radius: 16px;
   box-shadow: var(--shadow-modal);
   border: 1px solid var(--border);
-  padding: 36px 32px 28px;
+  padding: 47px 42px 36px;
   display: grid;
-  gap: 10px;
+  gap: 13px;
+  font-size: 130%;
 }
 
 .sso-card h2 {
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 700;
 }
 
 .sso-card p {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--text-2);
+}
+
+.sso-card label {
+  font-size: 15px;
+}
+
+.sso-card input {
+  font-size: 18px;
+  padding: 13px 16px;
+}
+
+.sso-card .primary-btn {
+  font-size: 17px;
+  padding: 14px;
 }
 
 .tv-overlay {
