@@ -1,0 +1,375 @@
+# UI Parity Gap Report (Legacy vs React)
+
+## Scope
+- Legacy app reference: `index.html` + `src/main.js` + `src/sessions.js`
+- React app reference: `apps/web/src/**/*`
+- Detailed module-to-module map: `docs/migration/ui-legacy-map.md`
+
+## Controls Added In This Pass
+- Admin Homepage:
+  - `+ New session` button styling
+  - session table action controls (`Open`, `Edit`, `Delete`)
+  - legacy-like session columns (`Session`, `Type`, `Entity`, `Dates`, `Status`, `Progress`, `Created By`)
+- New Session Modal:
+  - recount checkbox
+  - parent-session dropdown (shown when recount is checked)
+  - country-driven entity options
+- Session Header:
+  - action buttons (`Visible to users`, `Dashboard`, `End session`)
+  - status/progress/country chips
+- Session lifecycle behavior:
+  - working Admin Homepage actions (`Edit`, `Delete`, `Reopen` for closed sessions)
+  - working Session Header visibility toggle
+  - working Session Header end-session action
+  - Session Header `Dashboard` button now jumps directly to dashboard tab
+- Pair Assignment tab:
+  - top action buttons (`Import users`, `+ Add pair`)
+- `Import users` wired to backend (`POST /api/users/import-from-pa`) with legacy destructive confirmation and forced session reset (`resetSessionAssignments=true`)
+  - add-pair panel with `Counter`, `Checker`, `Counter 2`, `Role`, `Warehouse`
+  - search input for pair list
+  - pair table action buttons (`Edit`, `Delete`)
+  - strict-role toggle wired to API
+  - absent-member banner linked to attendance data
+  - recount bin multi-select + drawer edit workflow
+- Item Master tab:
+  - action buttons (`Import from SAP`, `Refresh bins`, `Export CSV`)
+  - `Refresh bins` wired to backend (`POST /api/bins/import-from-pa`) with success/error feedback banner
+  - status pill filters (`All`, `Matched`, `Variance`, `Pending`)
+  - toolbar dropdowns (`Status`, `Group` placeholder, `Warehouse`)
+  - row select checkbox + select-all + clear + compact toggle
+  - `Assigned To` column
+  - drop/recover actions
+  - bulk-assign selected items
+  - column visibility menu
+  - pagination controls
+  - photo gallery modal
+  - admin remark editor + save flow
+  - group filter from item data
+  - SAP import modal + API integration (`/sessions/:sessionId/items/import-from-sap`)
+- Attendance tab:
+  - `Refresh` button
+  - `+ Add attendee` button (placeholder action)
+  - present/absent summary strip
+  - QR token block with countdown + regenerate flow
+  - token format aligned with legacy scanner handshake (`att:<sessionId>:<minute>`)
+  - manual attendee add integration
+  - attendance time edit + save flow
+- Dashboard tab:
+  - by-group and by-warehouse breakdown tables
+  - drilldown modal with row details
+- Audit Trail tab:
+  - `Refresh` button
+  - full legacy columns (`Damaged`, `Expired`, `Warehouse`, `Remark`)
+  - approval-style remark highlighting
+- New Item Gallery tab:
+  - `Refresh` button
+  - image cards with photo lightbox
+  - detailed metadata (warehouse/qty/damaged/expired/remark/submitted/created)
+  - approve/reject workflow
+- Pending Approval tab:
+  - title aligned to legacy naming
+  - `Refresh` button
+  - session tab pending badge
+  - full legacy columns (`Old Bin`, `New Bin`) and reviewed section
+  - pending/empty/error banners
+- Warehouse page:
+  - action buttons (`Layout`, `Scan`, `Multi-Scan`, `+ New`)
+  - warehouse filter dropdown in search panel
+  - session selection home flow
+  - scanner modal workflow
+  - scanner attendance handshake (`POST /api/attendance/scan`) for admin QR tokens
+  - multi-scan queue/log workflow
+  - new-item submission modal flow
+  - layout modal/lightbox workflow
+- Count Input form:
+  - `Damaged Qty` and `Expired Qty` inputs
+  - `Cancel` button
+- Global:
+  - My Count History page
+  - Users & Roles modal
+  - SSO sign-in overlay gate
+  - email-first OTP flow (`email -> 6-digit OTP`) with directory precheck (`/api/auth/precheck`)
+  - role resolve from `users` table after OTP (`/api/auth/resolve-identity`)
+  - auth metadata role sync to Supabase auth user app metadata
+  - role-based navigation and route guard:
+    - `Admin` / `Super Admin`: admin + warehouse + history
+    - `User`: scan (`/warehouse`) + history (`/history`) only
+  - navigation grouping aligned to legacy sections:
+    - `Admin` section: `Sessions`, `Users & Roles`
+    - `Warehouse` section: `Scan & Count`, `Count History`
+  - post-login landing alignment:
+    - `Admin` / `Super Admin` default to `/admin` (Sessions)
+    - `User` defaults to `/warehouse` (Scan & Count)
+  - route-guard parity tests added for direct URL access:
+    - `User` opening `/admin` is redirected to `/warehouse`
+    - `Admin` opening `/admin` is allowed
+  - backend role parity for warehouse user session discovery:
+    - `GET /api/sessions` now allows `User` role but returns only `Active` + `userVisible` sessions
+    - `GET /api/users` remains `Admin` / `Super Admin` only
+    - strict-auth API tests lock both behaviors
+  - backend history scope parity for `User` role:
+    - `GET /api/history` is scoped to signed-in user/team context (cannot enumerate arbitrary submitter names)
+    - query filter for `submittedBy` applies only within that allowed scope
+    - strict-auth API tests lock this behavior
+  - TV dashboard overlay (full-screen)
+  - design guide alignment pass (`design_guide.md`):
+    - app shell updated to legacy-style structure (`sidebar + topbar + content`)
+    - typography/tokens reset to Authority Blue + Slate token system
+    - controls normalized (buttons, inputs, tables, cards, modals, tabs, banners, focus rings)
+    - desktop/mobile navigation patterns aligned (`sidebar` on desktop, `mobile-nav` on small screens)
+    - login overlay visual style aligned to design guide
+  - strict visual parity follow-up (legacy class/layout parity):
+    - session header rebuilt to legacy structure/classes (`.sess-hdr`, `.sess-hdr-top`, `.sess-meta-row`, chips/actions row)
+    - session tab bar rebuilt to legacy-style `.stab-bar` / `.stab` controls
+    - sidebar navigation now uses legacy-like inline SVG icons for admin/warehouse entries
+    - pair assignment moved from table-first layout to legacy card-grid (`.pair-grid`, `.pcard`, avatar badges, role badge, progress bars, add-pair tile)
+    - attendance moved to legacy card-grid (`.att-grid`, `.att-card`) with QR card, manual add card, pair badge, and time edit controls
+    - dashboard rebuilt with legacy KPI/ring/breakdown card structure and drilldown table behavior
+    - warehouse session picker and active scan page rebuilt with legacy `cv-*` and `ush-*` layout patterns
+    - warehouse gallery cards and count form styling aligned to legacy visual hierarchy and class naming
+    - responsive/mobile behavior aligned for tab scroller, active scan header stacking, and KPI/breakdown card grids
+    - functional parity validation after visual pass:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+  - strict visual parity follow-up (micro/pixel polish batch):
+    - session header status rendering moved to class-driven states (`status-active`, `status-closed`, `status-pending`) for deterministic legacy coloring
+    - session title + recount badge row normalized with dedicated `.sess-title-row` layout class
+    - pair assignment panel/search/strict-role region normalized with legacy-style utility classes:
+      - `.pair-form-card`, `.pair-form-head`, `.pair-search-wrap`, `.strict-roles-wrap`
+    - pair cards normalized from inline styles to reusable card primitives:
+      - `.pair-index`, `.pair-members`, `.pair-member-row`, `.pair-footer`, `.pair-progress-group`, `.pair-action-row`
+      - add-card tile normalized via `.pcard-add-tile`, `.pcard-add-icon`, `.pcard-add-label`
+    - attendance top sections normalized from inline styles to dedicated blocks:
+      - `.att-qr-card`, `.att-add-card`, `.att-head`, `.att-list-card`, `.att-empty`, `.att-pair-pill`
+    - dashboard KPI and breakdown layouts normalized to class-based legacy structure:
+      - ring card classes (`.db-kpi-ring`, `.db-ring-wrap`, `.db-ring-center`, `.db-ring-caption`)
+      - semantic color variants (`.db-kpi-blue`, `.db-kpi-green`, `.db-kpi-amber`, `.db-kpi-purple`)
+      - table header/progress classes (`.db-table-head`, `.db-table-hint`, `.db-mini-wrap`, `.db-col-num`, `.db-empty-cell`)
+    - wide drilldown modal class added (`.modal-wide`) to replace one-off inline width
+    - functional parity validation after micro-pixel polish:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+  - strict visual parity follow-up (micro cleanup batch):
+    - warehouse page/session selector inline styles converted to reusable classes:
+      - `.cv-select-title`, `.cv-assigned-pair`, `.cv-empty`, `.cv-empty-msg`
+    - approval tab new qty/new bin emphasis converted from inline style to class (`.approval-new-val`)
+    - approval reviewed rows text separator normalized to stable JSX string tokens (`" -> "`) to avoid parser ambiguity
+    - session header TV action label aligned closer to legacy wording:
+      - visible text changed from `TV Dashboard` to `Dashboard` while preserving `aria-label="Open TV Dashboard"` for test/accessibility stability
+    - functional parity validation after cleanup:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+  - strict visual parity follow-up (TV dashboard + header detail batch):
+    - TV dashboard overlay upgraded from compact modal view to legacy-style full-screen composition:
+      - branded 3-column header (`MediCount` / session meta / close action)
+      - left rail progress ring card (`152px` ring) + live attendance token card
+      - center KPI strip (`Total SKUs`, `Counted`, `Pending`, `New Items`) with semantic color cards
+      - dual breakdown panels (`By Item Group`, `By Warehouse`) with sticky table headers + progress bars
+      - right attendance gallery column with avatar cards and present/absent pills
+      - responsive fallbacks for narrower widths while preserving hierarchy
+    - session header action/details aligned closer to legacy:
+      - visibility toggle now uses separate hidden-state style class (`.sess-visibility-hidden`) instead of always-success styling
+      - strict-role action label normalized (`Strict Roles` / `Interchangeable Roles`)
+      - recount parent metadata chip shown when `isRecount` + `parentId` are present
+    - modal close icon text in new-session modal normalized to ASCII `X` for encoding consistency
+    - functional parity validation after TV/header batch:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+  - strict visual parity follow-up (session context + encoding hygiene batch):
+    - session header now shows richer legacy-like recount context:
+      - recount sessions display parent session chip with resolved parent name
+      - recount sessions display parent linkage banner under meta row
+      - first-count sessions with linked recount display handoff warning banner with recount name
+    - visibility button state styling now clearly differentiates visible vs hidden session state while preserving existing behavior/tests
+    - users-and-roles modal close icon normalized to ASCII `X` to eliminate encoding artifacts
+    - non-ASCII cleanup pass across `apps/web/src` completed (no remaining non-ASCII content)
+    - functional parity validation after session-context batch:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+  - strict visual parity follow-up (header + tab microparity batch):
+    - session header actions aligned to legacy action set and styling:
+      - removed duplicate strict-role control from header (strict-role remains in Pair Assignment tab)
+      - visibility/dashboard/end buttons now use legacy-like compact `btn btn-sm` variants
+    - session meta status text aligned to legacy dot format (`● Active/Closed/Draft`)
+    - session title subtitle separators normalized (`type · entity · date range`) with stable unicode handling
+    - pending approval tab badge dimensions/alignment adjusted to legacy pill metrics
+    - session detail tabs keep same order and style while using a single computed pending count source
+    - functional parity validation after header/tab batch:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+  - strict visual parity follow-up (warehouse search-detail flow batch):
+    - warehouse flow now mirrors legacy split interaction:
+      - `Search/Gallery` state and `Detail/Count Form` state are separated
+      - item cards in both search and assigned galleries are keyboard/click selectable (`Tap to count`)
+      - detail state includes `Back to search` action with preserved count form behavior
+    - exact barcode/code query now auto-opens detail when one exact match is found
+    - scanner `+1 Count` action now opens the matched item detail after update
+    - style parity updates added for warehouse detail controls:
+      - `.cv-back-btn`, `.cv-item-card-clickable`, `.cv-item-card-active`, `.cv-item-open-hint`
+    - test parity update:
+      - warehouse count submission test now follows legacy user path (search + select item card + submit)
+    - functional parity validation after warehouse flow batch:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+  - strict visual parity follow-up (warehouse empty-state + action-visibility batch):
+    - search result rendering now mirrors legacy behavior:
+      - search gallery renders only when query exists and has matches
+      - legacy empty-state panel appears for no matches
+    - no-result recovery behavior added:
+      - `+ Add as new item` button appears in empty state
+      - item code is prefilled from search query in the new-item form
+      - cross-warehouse hint shown when active warehouse filter hides otherwise matching items, including quick `Search all warehouse codes` action
+    - action visibility aligned with legacy role/session intent:
+      - `Multi-Scan` action shown only for `Admin` / `Super Admin`
+      - `+ New` action hidden in recount sessions
+    - assigned-pair selector now uses live values derived from current loaded items instead of fixed hardcoded options
+    - functional parity validation after warehouse empty-state/action batch:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+  - strict visual parity follow-up (warehouse multi-scan workflow batch):
+    - multi-scan flow now mirrors legacy one-scan-at-a-time interaction:
+      - dedicated multi-scan header + done action
+      - scanner-target input (`Waiting for scan...`) with Enter-to-process behavior
+      - per-session scanned counter badge and scan log panel
+      - duplicate scan debounce guard for rapid repeated scanner events
+      - already-counted item guard with warning feedback
+      - not-found scan entries expose `+ Add` shortcut into new-item flow when allowed
+    - scanner/multi-scan item matching no longer depends on current search text:
+      - matching uses full loaded session pool (with warehouse filter) for consistent barcode behavior
+    - warehouse data hooks now support query enable flags to avoid pre-session fetch noise:
+      - `useWarehouseSearchBySessionQuery(..., enabled?)`
+      - `useAssignedItemsBySessionQuery(..., enabled?)`
+    - tests added for parity-critical behavior:
+      - multi-scan update + counter/log
+      - user role hides multi-scan action
+    - functional parity validation after warehouse multi-scan batch:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+  - strict functional parity follow-up (warehouse new-item detailed submission batch):
+    - warehouse `+ New` flow now captures legacy detailed fields:
+      - required: `Item Code`, `Item Name`, `UOM`, `Serial / Batch`, `Bin Location`, `Counted Qty`, `Photos`
+      - optional: `Damaged Qty`, `Expired Qty`, `Remark`
+    - submission validation aligned to legacy intent:
+      - blocks submit when required fields are missing
+      - blocks submit when qty values are invalid/negative
+      - blocks submit when no photo is selected
+    - end-to-end payload parity wired:
+      - frontend mutation payload now includes `uom`, `batch`, `qty`, `damagedQty`, `expiredQty`, `remark`, `photos`
+      - API schema/repository now persist and return those fields
+      - New Item Gallery now renders `UOM` and `Serial / Batch` metadata
+    - cache parity fix for warehouse flow:
+      - creating a new item now invalidates `warehouse-search` and `warehouse-assigned` query caches
+    - parity tests added:
+      - web test for detailed new-item submit form flow
+      - API route test for extended `/api/new-items` payload persistence and mirrored item-row creation
+    - functional parity validation after warehouse new-item batch:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+      - `npm --prefix apps/api run lint`
+      - `npm --prefix apps/api run typecheck`
+      - `npm --prefix apps/api run test` (all passing)
+  - strict visual parity follow-up (micro-density and responsive nav/header polish batch):
+    - Item Master dense-table readability refined:
+      - code column styled as monospace badge-like token
+      - status column rendered as compact semantic pills (`Matched` / `Variance` / `Pending`)
+      - row density tightened for high-row-count sessions with targeted item-master spacing
+      - count qty and remark editors resized for denser scanability
+    - session header wrapping improved for narrow laptop widths:
+      - header title/meta/actions now wrap predictably without overlap
+      - session meta chips reduced to tighter spacing and balanced wrap
+      - session subtitle segments now split into wrap-safe parts with explicit separators
+    - navigation label truncation improved on constrained widths:
+      - desktop sidebar labels now use explicit truncation-safe wrappers
+      - mobile bottom-nav labels now use ellipsis behavior at very small widths (`<=360px`)
+    - functional parity validation after micro-density/responsive batch:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+  - strict visual parity follow-up (long-text and high-density data hardening batch):
+    - admin sessions table hardened for long names/ids:
+      - row hidden-state now class-driven (`session-row-hidden`) instead of inline style
+      - session title and id now truncate with ellipsis while preserving full value via hover title
+    - pair cards hardened for long member names and bin strings:
+      - member name rows now use truncation-safe wrapper (`.pname-text`)
+      - bin value row now ellipsizes instead of overflowing card width
+    - attendance card hardening:
+      - attendee name now line-clamped (2 lines max) for long names
+    - warehouse gallery hardening:
+      - code and warehouse tags now ellipsize
+      - item name now line-clamped
+      - meta row now single-line ellipsis with full hover title
+    - functional parity validation after long-text hardening:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+  - strict visual parity follow-up (tablet/mobile transition cross-check hardening batch):
+    - role-aware mobile nav spacing aligned with legacy intent:
+      - mobile nav now applies role-specific layout classes (`mobile-nav-admin` / `mobile-nav-user`)
+      - `User` role mobile nav now renders in 2 equal columns (removes empty third slot spacing)
+      - App tests now assert role-specific mobile nav class wiring
+    - tablet shell transition hardening (`769px` to `1024px`):
+      - sidebar now keeps a stable medium-width footprint with tighter internal spacing
+      - topbar/content padding tuned for medium-width laptops/tablets
+      - sidebar email line is hidden at tablet widths to avoid user-panel overflow
+    - breadcrumb long-name hardening:
+      - breadcrumb container now supports safe truncation
+      - current session breadcrumb now ellipsizes for long names/ids
+    - session tab-strip overflow hardening:
+      - `stab-bar` now supports horizontal scrolling outside mobile-only breakpoint
+      - tab labels no longer shrink into clipped/overlapping states at transitional widths
+    - warehouse action-row transition hardening (`769px` to `980px`):
+      - assigned-pair control now moves to full-width row to prevent overlap with action buttons
+    - mobile horizontal-overflow guard:
+      - content area now suppresses x-overflow at mobile breakpoint to prevent accidental sideways scroll
+    - functional parity validation after tablet/mobile transition hardening:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+  - strict functional parity follow-up (item master actions + stability hardening batch):
+    - fixed Item Master mount/render instability in test/runtime path:
+      - replaced unstable fallback data references with stable empty constants
+      - selection-pruning effect now no-ops when no real change is needed (prevents unnecessary rerender churn)
+    - restored legacy Item Master top actions that were temporarily missing:
+      - `Refresh bins` (wired to existing `/bins/import-from-pa` flow)
+      - `Export CSV` (exports current filtered table selection and shows feedback banner)
+    - parity tests added/updated:
+      - Item Master refresh-bins toolbar flow
+      - Item Master export-csv toolbar flow
+      - Admin session parity suite now includes 13 passing scenarios
+    - functional parity validation after item-master hardening:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+  - strict functional parity follow-up (pair drawer + repair workflow batch):
+    - recount Pair Assignment drawer upgraded to legacy-style operational flow:
+      - drawer item table now lists assigned rows (`Code`, `Name`, `Group`, `Batch`, `UoM`, `Bin`, `Status`)
+      - drawer search and active/dropped filters added for quick item review
+      - drawer summary and action footer aligned (`Edit pair`, `Save bins`, `Close`)
+    - absent-member replacement workflow restored:
+      - drawer now exposes `Replace absent member` when attendance indicates missing/absent pair members
+      - replacement modal lists available users and updates target role (`counter`/`checker`/`counter2`) on confirm
+    - parity tests added for this batch:
+      - recount drawer open + item filtering flow
+      - absent-member replacement flow
+    - functional parity validation after pair drawer/repair batch:
+      - `npm --prefix apps/web run lint`
+      - `npm --prefix apps/web run typecheck`
+      - `npm --prefix apps/web run test` (all passing)
+
+## Still Missing (Parity Gaps)
+- No functional parity blockers identified in the migrated React/Express scope.
+- Environment dependencies still required for production-like behavior:
+  - frontend Vite env loading is configured with `envDir: "../.."` (reads root `.env` from `refactored STA`)
+  - configure `PA_ITEMS_URL` (and optional `API_KEY` / `PA_API_KEY`) for live upstream SAP import source
+  - set `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` for Supabase OTP SSO flow (default outside test mode)
+  - frontend validates `VITE_SUPABASE_ANON_KEY` format and blocks startup message if key is not public/anon (`sb_publishable_...` or legacy `eyJ...`)

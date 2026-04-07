@@ -1,0 +1,36 @@
+{
+  "name": "refactored-sta",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "start": "npm run start:api",
+    "start:api": "npm --prefix apps/api run start",
+    "test": "npm run test:web && npm run test:api",
+    "test:web": "npm --prefix apps/web run test",
+    "test:api": "npm --prefix apps/api run test",
+    "test:all": "npm run test",
+    "dev:web": "npm --prefix apps/web run dev",
+    "dev:api": "npm --prefix apps/api run dev",
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
+    "build:web": "npm --prefix apps/web run build",
+    "build:api": "npm --prefix apps/api run build",
+    "build": "npm run build:web && npm run build:api",
+    "lint:web": "npm --prefix apps/web run lint",
+    "lint:api": "npm --prefix apps/api run lint",
+    "lint": "npm run lint:web && npm run lint:api",
+    "typecheck:web": "npm --prefix apps/web run typecheck",
+    "typecheck:api": "npm --prefix apps/api run typecheck",
+    "typecheck": "npm run typecheck:web && npm run typecheck:api"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
