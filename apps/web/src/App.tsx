@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "react-router-dom";
@@ -95,12 +95,14 @@ function LocalOtpForm({ onSignedIn }: { onSignedIn: (identity: AppIdentity) => v
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
 
   const normalizedEmail = email.trim().toLowerCase();
 
   return (
     <div className="sso-overlay" role="dialog" aria-modal="true" aria-label="SSO Sign-In">
       <form
+        ref={formRef}
         className="sso-card"
         onSubmit={(event) => {
           event.preventDefault();
@@ -142,7 +144,11 @@ function LocalOtpForm({ onSignedIn }: { onSignedIn: (identity: AppIdentity) => v
             OTP
             <input
               value={otpCode}
-              onChange={(event) => setOtpCode(event.target.value)}
+              onChange={(event) => {
+                const val = event.target.value;
+                setOtpCode(val);
+                if (val.length === 6) formRef.current?.requestSubmit();
+              }}
               inputMode="numeric"
               maxLength={6}
               placeholder="6-digit code"
@@ -167,6 +173,7 @@ function SupabaseOtpForm({ onSignedIn }: { onSignedIn: (identity: AppIdentity) =
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
 
   const normalizedEmail = email.trim().toLowerCase();
 
@@ -184,6 +191,7 @@ function SupabaseOtpForm({ onSignedIn }: { onSignedIn: (identity: AppIdentity) =
   return (
     <div className="sso-overlay" role="dialog" aria-modal="true" aria-label="SSO Sign-In">
       <form
+        ref={formRef}
         className="sso-card"
         onSubmit={(event) => {
           event.preventDefault();
@@ -270,7 +278,11 @@ function SupabaseOtpForm({ onSignedIn }: { onSignedIn: (identity: AppIdentity) =
             OTP
             <input
               value={otpCode}
-              onChange={(event) => setOtpCode(event.target.value)}
+              onChange={(event) => {
+                const val = event.target.value;
+                setOtpCode(val);
+                if (val.length === 6) formRef.current?.requestSubmit();
+              }}
               inputMode="numeric"
               maxLength={6}
               placeholder="6-digit code"
