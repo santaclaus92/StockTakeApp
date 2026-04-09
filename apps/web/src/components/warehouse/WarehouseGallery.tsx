@@ -22,7 +22,7 @@ export function WarehouseGallery({ title, items, loading, selectedItemId, onSele
 
       <div className="cv-result-grid">
         {items.map((item) => {
-          const counted = item.countQty !== null;
+          const counted = item.countQty !== null && item.countQty !== undefined;
           return (
             <article
               key={item.id}
@@ -41,22 +41,13 @@ export function WarehouseGallery({ title, items, loading, selectedItemId, onSele
                   : undefined
               }
             >
-              <div className="cv-item-primary">
-                <span className="cv-item-code-tag" title={item.code}>
-                  {item.code}
-                </span>
-                <span className="cv-item-batch-tag" title={item.warehouse}>
-                  {item.warehouse}
-                </span>
+              <div className="cv-item-info-list">
+                <span className="cv-item-info-line">{item.code}</span>
+                <span className="cv-item-info-line">{item.name}</span>
+                {item.batch ? <span className="cv-item-info-line">{item.batch}</span> : null}
+                {item.whCode ? <span className="cv-item-wh-pill">{item.whCode}</span> : null}
               </div>
-              <div className="cv-item-name" title={item.name}>
-                {item.name}
-              </div>
-              <div className="cv-item-meta">
-                {item.warehouse || ""}
-                {item.assignedTo ? ` - Assigned: ${item.assignedTo}` : ""}
-              </div>
-              {counted ? <div className="cv-item-counted">Counted: {item.countQty}</div> : null}
+              {counted ? <div className="cv-item-counted-pill">Counted</div> : null}
             </article>
           );
         })}

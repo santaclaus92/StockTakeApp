@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminService } from "../services/adminService";
-import type { BulkAssignInput, ItemUpdateInput, NewItemCreateInput, NewSessionInput, PairAssignment, UserRoleRecord } from "../types/domain";
+import type { BulkAssignInput, CreateAdjustmentInput, ItemUpdateInput, NewItemCreateInput, NewSessionInput, PairAssignment, UserRoleRecord } from "../types/domain";
 
 type ImportBinsFromPaInput = {
   data?: Record<string, unknown>[];
@@ -72,6 +72,16 @@ export function useEndSessionMutation() {
     mutationFn: (sessionId: string) => adminService.endSession(sessionId),
     onSuccess: (_data, sessionId) => {
       invalidateSessionQueryCache(queryClient, sessionId);
+    }
+  });
+}
+
+export function useLoadRecountItemsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) => adminService.loadRecountItems(sessionId),
+    onSuccess: (_data, sessionId) => {
+      void queryClient.invalidateQueries({ queryKey: ["items", sessionId] });
     }
   });
 }
@@ -318,6 +328,24 @@ export function useReviewApprovalMutation(sessionId: string) {
   });
 }
 
+export function useCreateAdjustmentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateAdjustmentInput) => adminService.createAdjustment(input),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["my-adjustments", variables.sessionId] });
+    }
+  });
+}
+
+export function useMyAdjustmentsQuery(sessionId?: string, submittedBy?: string) {
+  return useQuery({
+    queryKey: ["my-adjustments", sessionId ?? "", submittedBy ?? ""],
+    queryFn: () => adminService.listMyAdjustments({ sessionId, submittedBy }),
+    enabled: Boolean(sessionId)
+  });
+}
+
 export function useCountHistoryQuery(filters?: { submittedBy?: string; sessionId?: string }) {
   return useQuery({
     queryKey: ["count-history", filters?.submittedBy ?? "", filters?.sessionId ?? ""],
@@ -370,7 +398,12 @@ export function useUpdateUserRoleMutation() {
   return useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: UserRoleRecord["role"] }) =>
       adminService.updateUserRole(userId, role),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] })
+    onSuccess: (_data, variables) => {
+      queryClient.setQueryData<UserRoleRecord[]>(["users"], (old) =>
+        old?.map((u) => (u.id === variables.userId ? { ...u, role: variables.role } : u)) ?? []
+      );
+      void queryClient.invalidateQueries({ queryKey: ["users"] });
+    }
   });
 }
 

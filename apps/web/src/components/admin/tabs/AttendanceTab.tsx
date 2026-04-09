@@ -204,7 +204,6 @@ export function AttendanceTab({ sessionId }: AttendanceTabProps) {
         </div>
       </div>
 
-      {isLoading ? <div className="banner">Loading attendance...</div> : null}
 
       <div id="attendance-list" className="card att-list-card">
         {attendees.length === 0 ? (

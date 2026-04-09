@@ -74,7 +74,7 @@ export function createApp(options: CreateAppOptions = {}) {
     createAuthMiddleware(authVerifier, {
       authRequired,
       devFallbackRole,
-      publicPaths: ["/api/auth/precheck"]
+      publicPaths: ["/api/auth/precheck", "/api/webhooks"]
     })
   );
 

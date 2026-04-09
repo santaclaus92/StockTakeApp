@@ -4,6 +4,7 @@ import type {
   ApprovalRecord,
   BulkAssignInput,
   CountHistoryEntry,
+  CreateAdjustmentInput,
   AttendanceRecord,
   AttendanceUpsertInput,
   AuditEntry,
@@ -655,7 +656,7 @@ export class InMemoryStaRepository implements StaRepository {
       expiryDate: null,
       category: null,
       warehouse: created.warehouse ?? "-",
-      whCode: null,
+      whCode: "New Item",
       sapQty: 0,
       countQty: qty,
       stagedCountQty: null,
@@ -749,6 +750,36 @@ export class InMemoryStaRepository implements StaRepository {
     }
 
     return clone(target);
+  }
+
+  async createAdjustment(input: CreateAdjustmentInput): Promise<ApprovalRecord> {
+    this.ensureSessionCollections(input.sessionId);
+    const item = Object.values(this.itemsBySession).flatMap((rows) => rows).find((row) => row.id === input.itemId);
+    const record: ApprovalRecord = {
+      id: `ADJ-${Date.now()}`,
+      itemId: input.itemId,
+      itemCode: item?.code ?? "",
+      itemName: item?.name ?? "",
+      oldQty: item?.countQty ?? 0,
+      newQty: input.newQty,
+      status: "Pending",
+      submittedBy: input.submittedBy,
+      oldBin: item?.warehouse ?? null,
+      newBin: input.newBinLocation ?? item?.warehouse ?? null,
+      createdAt: new Date().toISOString()
+    };
+    this.approvalsBySession[input.sessionId].unshift(record);
+    return clone(record);
+  }
+
+  async listAdjustments(filters: { submittedBy?: string; sessionId?: string }): Promise<ApprovalRecord[]> {
+    const all = filters.sessionId
+      ? (this.approvalsBySession[filters.sessionId] ?? [])
+      : Object.values(this.approvalsBySession).flat();
+    const results = filters.submittedBy
+      ? all.filter((row) => row.submittedBy.toLowerCase().includes(filters.submittedBy!.toLowerCase()))
+      : all;
+    return clone(results);
   }
 
   async listBins(): Promise<string[]> {
@@ -964,65 +995,60 @@ export class InMemoryStaRepository implements StaRepository {
     }
 
     if (payload.source === "users") {
-      const privilegedRoleById = new Map<string, UserRoleRecord["role"]>();
-      const privilegedRoleByEmail = new Map<string, UserRoleRecord["role"]>();
-      const privilegedUsers = this.users.filter((user) => user.role === "Admin" || user.role === "Super Admin");
+      // Build lookup maps for existing users
+      const existingByEmail = new Map<string, UserRoleRecord>();
+      const existingById = new Map<string, UserRoleRecord>();
+      for (const user of this.users) {
+        existingById.set(user.id, user);
+        const email = user.email?.trim().toLowerCase();
+        if (email) existingByEmail.set(email, user);
+      }
 
-      privilegedUsers.forEach((user) => {
-        privilegedRoleById.set(user.id, user.role);
-        const normalizedEmail = user.email?.trim().toLowerCase();
-        if (normalizedEmail) {
-          privilegedRoleByEmail.set(normalizedEmail, user.role);
-        }
-      });
-
-      const seenById = new Map<string, UserRoleRecord>();
+      // Parse and deduplicate incoming users
+      const incomingUsers: UserRoleRecord[] = [];
+      const seenIds = new Set<string>();
       const seenEmails = new Set<string>();
 
-      payload.data.forEach((entry) => {
+      for (const entry of payload.data) {
         const row = entry as Record<string, unknown>;
         const id = String(row.id ?? randomUUID());
         const emailRaw = row.email_address ? String(row.email_address) : row.email ? String(row.email) : null;
         const normalizedEmail = emailRaw?.trim().toLowerCase() || null;
-        if (normalizedEmail && seenEmails.has(normalizedEmail)) {
-          return;
-        }
 
-        const preservedRole = privilegedRoleById.get(id) ?? (normalizedEmail ? privilegedRoleByEmail.get(normalizedEmail) : undefined);
-        const mapped: UserRoleRecord = {
+        if (seenIds.has(id)) continue;
+        if (normalizedEmail && seenEmails.has(normalizedEmail)) continue;
+
+        incomingUsers.push({
           id,
           name: String(row.display_name ?? row.name ?? row.full_name ?? ""),
           email: normalizedEmail,
-          role: preservedRole ?? "User",
+          role: "User",
           country: row.country === "Singapore" ? "Singapore" : row.country === "Malaysia" ? "Malaysia" : null,
           accountEnabled: typeof row.account_enabled === "boolean" ? row.account_enabled : true
-        };
-
-        seenById.set(id, mapped);
-        if (normalizedEmail) {
-          seenEmails.add(normalizedEmail);
-        }
-      });
-
-      const mapped = Array.from(seenById.values());
-      privilegedUsers.forEach((user) => {
-        const normalizedEmail = user.email?.trim().toLowerCase() ?? null;
-        const alreadyPresent = mapped.some(
-          (row) => row.id === user.id || (normalizedEmail ? row.email?.toLowerCase() === normalizedEmail : false)
-        );
-        if (alreadyPresent) return;
-        mapped.push({
-          id: user.id,
-          name: user.name,
-          email: normalizedEmail,
-          role: user.role,
-          country: user.country ?? null,
-          accountEnabled: user.accountEnabled ?? true
         });
+
+        seenIds.add(id);
+        if (normalizedEmail) seenEmails.add(normalizedEmail);
+      }
+
+      // Add users that don't exist yet
+      const toInsert = incomingUsers.filter((user) => {
+        const email = user.email?.trim().toLowerCase() ?? "";
+        return !existingById.has(user.id) && !(email && existingByEmail.has(email));
       });
 
-      this.users = mapped;
-      return { imported: mapped.length };
+      // Remove existing users not in the import
+      const incomingIds = new Set(incomingUsers.map((u) => u.id));
+      const incomingEmails = new Set(incomingUsers.map((u) => u.email?.trim().toLowerCase() ?? "").filter(Boolean));
+      this.users = this.users.filter((user) => {
+        const email = user.email?.trim().toLowerCase() ?? "";
+        return incomingIds.has(user.id) || (email && incomingEmails.has(email));
+      });
+
+      // Insert new users
+      this.users.push(...toInsert);
+
+      return { imported: toInsert.length };
     }
 
     if (payload.source === "items") {
@@ -1078,11 +1104,28 @@ export class InMemoryStaRepository implements StaRepository {
 
       const mapped = Array.from(mappedById.values());
 
+      // Delete all existing items then insert fresh
       this.itemsBySession[payload.sessionId] = mapped;
       return { imported: mapped.length };
     }
 
     return { imported: 0 };
+  }
+
+  async findLinkedRecountSessions(parentSessionId: string): Promise<Session[]> {
+    return this.sessions.filter((s) => s.parentId === parentSessionId && s.isRecount);
+  }
+
+  async autoAssignNewItemsToAdminPairs(_parentSessionId: string, _recountSessionId: string): Promise<number> {
+    return 0;
+  }
+
+  async autoLoadItemsToRecountSession(_parentSessionId: string, _recountSessionId: string): Promise<number> {
+    return 0;
+  }
+
+  async autoAssignRecountItems(_recountSessionId: string): Promise<void> {
+    // no-op in memory implementation
   }
 }
 

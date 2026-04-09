@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CameraScanner } from "../components/warehouse/CameraScanner";
 import { CountInputForm } from "../components/warehouse/CountInputForm";
 import { QuantityField } from "../components/ui/QuantityField";
 import { WarehouseGallery } from "../components/warehouse/WarehouseGallery";
+import { BannerModal } from "../components/ui/BannerModal";
 import { useIdentity } from "../app/IdentityContext";
-import { useCreateNewItemMutation, useScanAttendanceMutation, useSessionsQuery } from "../hooks/useAdminData";
-import { useAssignedItemsBySessionQuery, useBinsQuery, useSubmitCountMutation, useWarehouseSearchBySessionQuery, useWhCodesQuery } from "../hooks/useWarehouseData";
+import { useCreateNewItemMutation, useItemsQuery, useScanAttendanceMutation, useSessionsQuery } from "../hooks/useAdminData";
+import { useAssignedItemsBySessionQuery, useBinsQuery, useSubmitCountMutation, useWarehouseSearchBySessionQuery } from "../hooks/useWarehouseData";
+import { uploadPhoto } from "../services/photoUpload";
 
 interface MultiScanLogEntry {
   id: string;
@@ -23,8 +25,8 @@ export function WarehousePage() {
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [query, setQuery] = useState("");
   const [warehouseFilter, setWarehouseFilter] = useState("");
-  const [scannerOpen, setScannerOpen] = useState(false);
-  const [scannerCode, setScannerCode] = useState("");
+  const [scanNotFound, setScanNotFound] = useState<string | null>(null);
+  const [attendanceNotice, setAttendanceNotice] = useState<{ type: "success" | "warning"; text: string } | null>(null);
   const [multiScanOpen, setMultiScanOpen] = useState(false);
   const [multiScanInput, setMultiScanInput] = useState("");
   const [multiScanLogs, setMultiScanLogs] = useState<MultiScanLogEntry[]>([]);
@@ -45,10 +47,13 @@ export function WarehousePage() {
   const [newItemRemark, setNewItemRemark] = useState("");
   const [newItemPhotos, setNewItemPhotos] = useState<string[]>([]);
   const [newItemError, setNewItemError] = useState("");
+  const [noSessionsDismissed, setNoSessionsDismissed] = useState(false);
+  const [newItemBinScanOpen, setNewItemBinScanOpen] = useState(false);
+  const newItemPhotoRef = useRef<HTMLInputElement>(null);
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
-  const [scannerNotice, setScannerNotice] = useState<{ type: "success" | "warning"; text: string } | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [scannedBin, setScannedBin] = useState<string | null>(null);
 
   const allItemsQuery = useWarehouseSearchBySessionQuery("", selectedSessionId || undefined, Boolean(selectedSessionId));
   const assignedQuery = useAssignedItemsBySessionQuery(
@@ -60,10 +65,39 @@ export function WarehousePage() {
   const submitCount = useSubmitCountMutation();
   const scanAttendance = useScanAttendanceMutation();
   const selectedSession = sessions.find((session) => session.id === selectedSessionId) ?? null;
+  const parentSessionId = selectedSession?.parentId ?? null;
+  const parentItemsQuery = useItemsQuery(parentSessionId ?? "", Boolean(parentSessionId));
+  const parentFirstCountIndex = useMemo(() => {
+    const byCodeBatch = new Map<string, number | null>();
+    const byCode = new Map<string, Array<{ id: string; countQty: number | null; batch: string | null }>>();
+    (parentItemsQuery.data ?? []).forEach((item) => {
+      const rawCode = item.code ?? "";
+      const code = rawCode.trim();
+      if (!code) return;
+      const codeKey = code.toLowerCase();
+      const batch = (item.batch ?? "").trim();
+      const batchKey = batch.toLowerCase();
+      byCodeBatch.set(`${codeKey}::${batchKey}`, item.countQty ?? null);
+      const list = byCode.get(codeKey) ?? [];
+      list.push({ id: item.id, countQty: item.countQty ?? null, batch: item.batch ?? null });
+      byCode.set(codeKey, list);
+    });
+    return { byCodeBatch, byCode };
+  }, [parentItemsQuery.data]);
   const createNewItem = useCreateNewItemMutation(selectedSessionId || "");
 
   const allSessionItems = useMemo(() => allItemsQuery.data ?? [], [allItemsQuery.data]);
-  const assignedItems = useMemo(() => assignedQuery.data ?? [], [assignedQuery.data]);
+  const assignedItems = useMemo(() => {
+    const items = assignedQuery.data ?? [];
+    if (!selectedSession?.isRecount) return items;
+    // For recount: uncounted first, then sort by bin location
+    return [...items].sort((a, b) => {
+      const aUncounted = a.countQty === null || a.countQty === undefined ? 0 : 1;
+      const bUncounted = b.countQty === null || b.countQty === undefined ? 0 : 1;
+      if (aUncounted !== bUncounted) return aUncounted - bUncounted;
+      return (a.warehouse ?? "").localeCompare(b.warehouse ?? "");
+    });
+  }, [assignedQuery.data, selectedSession?.isRecount]);
   const activeVisibleSessions = sessions.filter((session) => session.status === "Active" && session.userVisible);
   const isAdminOrSuperAdmin = identity?.role === "Admin" || identity?.role === "Super Admin";
   const showNewItemAction = !selectedSession?.isRecount;
@@ -106,15 +140,17 @@ export function WarehousePage() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  const { data: fetchedBins = [] } = useBinsQuery(Boolean(activeItemId));
-  const { data: fetchedWhCodes = [] } = useWhCodesQuery(selectedSessionId || undefined, Boolean(selectedSessionId));
+  const { data: fetchedBins = [] } = useBinsQuery(Boolean(activeItemId) || newItemOpen);
 
   const warehouseOptions = useMemo(
     () => Array.from(new Set(allSessionItems.map((item) => item.warehouse).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [allSessionItems]
   );
 
-  const whCodeOptions = fetchedWhCodes;
+  const whCodeOptions = useMemo(
+    () => Array.from(new Set(allSessionItems.map((item) => item.whCode).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [allSessionItems]
+  );
 
   const binOptions = useMemo(
     () => fetchedBins.length > 0 ? fetchedBins : warehouseOptions,
@@ -160,6 +196,19 @@ export function WarehousePage() {
     [allSessionItems, queryLower]
   );
 
+  const isSingaporeSession = selectedSession?.country === "Singapore";
+
+  const scannedBinItems = useMemo(() => {
+    if (!scannedBin) return [];
+    return allSessionItems
+      .filter((item) => item.warehouse === scannedBin)
+      .sort((a, b) => {
+        const aUncounted = a.countQty === null || a.countQty === undefined ? 0 : 1;
+        const bUncounted = b.countQty === null || b.countQty === undefined ? 0 : 1;
+        return aUncounted - bUncounted;
+      });
+  }, [scannedBin, allSessionItems]);
+
   const showNoResults = Boolean(queryTrimmed) && !allItemsQuery.isLoading && searchResults.length === 0;
   const hasCrossWarehouseMatches = Boolean(warehouseFilter) && searchMatchesAcrossWarehouses.length > 0;
 
@@ -174,21 +223,32 @@ export function WarehousePage() {
     if (filteredWarehouseItems.length > 0) return filteredWarehouseItems;
     return selectableItems.filter((item) => !warehouseFilter || item.warehouse === warehouseFilter);
   }, [filteredWarehouseItems, selectableItems, warehouseFilter]);
-  const scannerCodeNorm = scannerCode.trim().toLowerCase();
-  const scannerMatched =
-    scannerCodeNorm.length > 0
-      ? (scanMatchPool.find(
-          (item) =>
-            item.code.toLowerCase() === scannerCodeNorm ||
-            (item.batch && item.batch.toLowerCase() === scannerCodeNorm)
-        ) ?? null)
-      : null;
-  const isAttendanceToken = scannerCode.trim().toLowerCase().startsWith("att:");
-
   const activeItem = useMemo(
     () => selectableItems.find((item) => item.id === activeItemId) ?? null,
     [activeItemId, selectableItems]
   );
+  const activeFirstCountQty = useMemo(() => {
+    if (!activeItem) return null;
+    const code = activeItem.code?.trim?.() ?? "";
+    if (!code) return null;
+    const codeKey = code.toLowerCase();
+    const batchKey = ((activeItem.batch ?? "").trim()).toLowerCase();
+
+    // Preferred: exact code+batch match (fast + precise)
+    const direct = parentFirstCountIndex.byCodeBatch.get(`${codeKey}::${batchKey}`);
+    if (direct !== undefined) return direct ?? null;
+
+    // Fallback: if code uniquely identifies the parent item, use it (batch can be missing in recount items)
+    const matches = parentFirstCountIndex.byCode.get(codeKey) ?? [];
+    if (matches.length === 1) return matches[0].countQty ?? null;
+
+    return null;
+  }, [activeItem, parentFirstCountIndex]);
+
+  useEffect(() => {
+    if (!selectedSession?.isRecount) return;
+    if (!activeItem) return;
+  }, [activeItem, selectedSession?.isRecount]);
 
   const parseOptionalNonNegativeNumber = (value: string): number | null => {
     const trimmed = value.trim();
@@ -205,7 +265,7 @@ export function WarehousePage() {
     setNewItemName("");
     setNewItemUom("");
     setNewItemBatch("");
-    setNewItemWarehouse(warehouseFilter || "");
+    setNewItemWarehouse("");
     setNewItemQty(null);
     setNewItemDamagedQty(null);
     setNewItemExpiredQty(null);
@@ -293,13 +353,6 @@ export function WarehousePage() {
   };
 
   useEffect(() => {
-    if (!queryTrimmed) return;
-    if (searchResults.length === 1 && activeItemId !== searchResults[0].id) {
-      setActiveItemId(searchResults[0].id);
-    }
-  }, [activeItemId, searchResults, queryTrimmed]);
-
-  useEffect(() => {
     if (activeItemId && !selectableItems.some((item) => item.id === activeItemId)) {
       setActiveItemId(null);
     }
@@ -314,8 +367,11 @@ export function WarehousePage() {
           <div className="cv-page-sub">Select a session to begin counting</div>
         </div>
 
-        {activeVisibleSessions.length === 0 ? (
-          <div className="banner">No active sessions are currently available. Ask an admin to enable a session.</div>
+        {activeVisibleSessions.length === 0 && !noSessionsDismissed ? (
+          <BannerModal
+            message="No active sessions are currently available. Ask an admin to enable a session."
+            onClose={() => setNoSessionsDismissed(true)}
+          />
         ) : null}
 
         <div className="ush-grid">
@@ -360,6 +416,7 @@ export function WarehousePage() {
                 setActiveItemId(null);
                 setQuery("");
                 setWarehouseFilter("");
+                setScannedBin(null);
                 localStorage.removeItem(COUNT_SESSION_STORAGE_KEY);
               }}
             >
@@ -378,19 +435,19 @@ export function WarehousePage() {
           </div>
         </div>
 
-        <div className="cv-search-block">
-          <div className="cv-search-row">
-            <input
-              className="cv-search-input"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-              }}
-              placeholder="Item code, name or batch..."
-            />
-          </div>
+        {!activeItem && !newItemOpen ? (
+          <div className="cv-search-block">
+            <div className="cv-search-row">
+              <input
+                className="cv-search-input"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                }}
+                placeholder="Item code, name or batch..."
+              />
+            </div>
 
-          {!activeItem ? (
             <div className="cv-action-row">
               <button type="button" className="cv-btn-action-secondary cv-btn-layout" onClick={() => setLayoutOpen(true)}>
                 Layout
@@ -409,62 +466,89 @@ export function WarehousePage() {
                 </button>
               ) : null}
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </section>
 
       {!activeItem ? (
         <>
-          {queryTrimmed && allItemsQuery.isLoading ? (
+          {scannedBin ? (
             <section className="panel">
-              <p>Loading items...</p>
-            </section>
-          ) : null}
-          {queryTrimmed && searchResults.length > 0 ? (
-            <WarehouseGallery
-              title="Search Results Gallery"
-              items={searchResults}
-              loading={allItemsQuery.isLoading}
-              selectedItemId={activeItemId}
-              onSelectItem={(item) => setActiveItemId(item.id)}
-            />
-          ) : null}
-          {showNoResults ? (
-            <section className="panel cv-empty-panel">
-              <div className="cv-empty-msg">No items matched your search.</div>
-              {hasCrossWarehouseMatches ? (
-                <div className="cv-wh-hint">
-                  <div>No match in <strong>{warehouseFilter}</strong>. Found in other warehouse codes:</div>
-                  <div className="cv-wh-hint-list">
-                    {searchMatchesAcrossWarehouses
-                      .filter((item) => item.whCode !== warehouseFilter)
-                      .slice(0, 5)
-                      .map((item) => (
-                        <div key={item.id} className="cv-wh-hint-item">
-                          <span className="cv-wh-hint-code">{item.whCode || item.warehouse}</span>
-                          <span>{item.code} — {item.name}{item.batch ? ` (${item.batch})` : ""}</span>
-                        </div>
-                      ))}
-                  </div>
-                  <button type="button" className="btn btn-sm" onClick={() => setWarehouseFilter("")}>
-                    Search all warehouse codes
-                  </button>
+              <div className="cv-bin-scan-header">
+                <div>
+                  <div className="cv-page-title">Bin: {scannedBin}</div>
+                  <div className="cv-page-sub">{scannedBinItems.length} item(s) — uncounted shown first</div>
                 </div>
-              ) : null}
-              {showNewItemAction ? (
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => openNewItem(queryTrimmed)}>
-                  + Add as new item
-                </button>
-              ) : null}
+                <button type="button" className="cv-active-change" onClick={() => setScannedBin(null)}>Clear</button>
+              </div>
+              {scannedBinItems.length === 0 ? (
+                <div className="cv-empty-msg">No items found in this bin.</div>
+              ) : (
+                <WarehouseGallery
+                  title=""
+                  items={scannedBinItems}
+                  loading={allItemsQuery.isLoading}
+                  selectedItemId={activeItemId}
+                  onSelectItem={(item) => { setScannedBin(null); setActiveItemId(item.id); }}
+                />
+              )}
             </section>
-          ) : null}
-          <WarehouseGallery
-            title=""
-            items={assignedItems}
-            loading={assignedQuery.isLoading}
-            selectedItemId={activeItemId}
-            onSelectItem={(item) => setActiveItemId(item.id)}
-          />
+          ) : (
+            <>
+              {queryTrimmed && allItemsQuery.isLoading ? (
+                <section className="panel">
+                  <p>Loading items...</p>
+                </section>
+              ) : null}
+              {queryTrimmed && searchResults.length > 0 ? (
+                <WarehouseGallery
+                  title="Search Results Gallery"
+                  items={searchResults}
+                  loading={allItemsQuery.isLoading}
+                  selectedItemId={activeItemId}
+                  onSelectItem={(item) => setActiveItemId(item.id)}
+                />
+              ) : null}
+              {showNoResults && !newItemOpen ? (
+                <section className="panel cv-empty-panel">
+                  <div className="cv-empty-msg">No items matched your search.</div>
+                  {hasCrossWarehouseMatches ? (
+                    <div className="cv-wh-hint">
+                      <div>No match in <strong>{warehouseFilter}</strong>. Found in other warehouse codes:</div>
+                      <div className="cv-wh-hint-list">
+                        {searchMatchesAcrossWarehouses
+                          .filter((item) => item.whCode !== warehouseFilter)
+                          .slice(0, 5)
+                          .map((item) => (
+                            <div key={item.id} className="cv-wh-hint-item">
+                              <span className="cv-wh-hint-code">{item.whCode || item.warehouse}</span>
+                              <span>{item.code} — {item.name}{item.batch ? ` (${item.batch})` : ""}</span>
+                            </div>
+                          ))}
+                      </div>
+                      <button type="button" className="btn btn-sm" onClick={() => setWarehouseFilter("")}>
+                        Search all warehouse codes
+                      </button>
+                    </div>
+                  ) : null}
+                  {showNewItemAction ? (
+                    <button type="button" className="btn btn-primary btn-sm" onClick={() => openNewItem(queryTrimmed)}>
+                      + Add as new item
+                    </button>
+                  ) : null}
+                </section>
+              ) : null}
+              {!newItemOpen ? (
+                <WarehouseGallery
+                  title=""
+                  items={assignedItems}
+                  loading={assignedQuery.isLoading}
+                  selectedItemId={activeItemId}
+                  onSelectItem={(item) => setActiveItemId(item.id)}
+                />
+              ) : null}
+            </>
+          )}
         </>
       ) : (
         <CountInputForm
@@ -473,6 +557,7 @@ export function WarehousePage() {
           onBack={() => { setActiveItemId(null); setQuery(""); }}
           initialSubmittedBy={identity?.name || "Counter"}
           isRecount={selectedSession?.isRecount ?? false}
+          firstCountQty={activeFirstCountQty}
           binOptions={binOptions}
           onSubmit={async (input) => {
             await submitCount.mutateAsync({
@@ -483,99 +568,71 @@ export function WarehousePage() {
         />
       )}
 
-      {cameraOpen ? (
-        <CameraScanner
-          onDetected={(code) => {
-            setScannerCode(code);
-            setScannerNotice(null);
-            setCameraOpen(false);
-            setScannerOpen(true);
-          }}
-          onClose={() => setCameraOpen(false)}
+      {attendanceNotice ? (
+        <BannerModal
+          type={attendanceNotice.type}
+          message={attendanceNotice.text}
+          onClose={() => setAttendanceNotice(null)}
         />
       ) : null}
 
-      {scannerOpen ? (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Scanner">
+      {scanNotFound ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Item Not Found">
           <section className="modal">
             <header>
-              <h2>Scanner</h2>
-              <button type="button" onClick={() => setScannerOpen(false)} className="ghost-btn">
-                X
-              </button>
+              <h2>Item Not Found</h2>
+              <button type="button" onClick={() => setScanNotFound(null)} className="ghost-btn">X</button>
             </header>
-            <label>
-              Scanned Code
-              <input
-                value={scannerCode}
-                onChange={(event) => {
-                  setScannerCode(event.target.value);
-                  setScannerNotice(null);
-                }}
-                placeholder="Scan item barcode or attendance QR token..."
-              />
-            </label>
-            {isAttendanceToken ? (
-              <div className="banner">Attendance token detected. Click "Mark Attendance" to sync.</div>
-            ) : scannerMatched ? (
-              <div className="banner success">
-                Match found: {scannerMatched.code} - {scannerMatched.name} ({scannerMatched.warehouse})
-              </div>
-            ) : (
-              <div className="banner warning">No exact match yet.</div>
-            )}
-            {scannerNotice ? <div className={`banner ${scannerNotice.type}`}>{scannerNotice.text}</div> : null}
+            <p>No item matched <strong>{scanNotFound}</strong>.</p>
             <footer>
-              <button type="button" onClick={() => setScannerOpen(false)}>
-                Close
-              </button>
-              <button
-                type="button"
-                className="primary-btn"
-                disabled={!isAttendanceToken || scanAttendance.isPending}
-                onClick={async () => {
-                  try {
-                    const userId = identity?.id || (identity?.name ? identity.name.toLowerCase().replace(/\s+/g, "_") : "warehouse_user");
-                    const result = await scanAttendance.mutateAsync({
-                      token: scannerCode.trim(),
-                      userId,
-                      name: identity?.name || "Warehouse User"
-                    });
-                    setScannerNotice({
-                      type: "success",
-                      text: `${result.message} (${result.sessionId})`
-                    });
-                  } catch (error) {
-                    setScannerNotice({
-                      type: "warning",
-                      text: (error as Error).message || "Failed to mark attendance."
-                    });
-                  }
-                }}
-              >
-                {scanAttendance.isPending ? "Marking..." : "Mark Attendance"}
-              </button>
-              <button
-                type="button"
-                className="primary-btn"
-                disabled={!scannerMatched}
-                onClick={async () => {
-                  if (!scannerMatched) return;
-                  await submitCount.mutateAsync({
-                    itemId: scannerMatched.id,
-                    qty: (scannerMatched.countQty ?? 0) + 1,
-                    submittedBy: identity?.name || "Scanner",
-                    remark: "Scanned via single scan"
-                  });
-                  setActiveItemId(scannerMatched.id);
-                  setScannerOpen(false);
-                }}
-              >
-                +1 Count
-              </button>
+              <button type="button" onClick={() => setScanNotFound(null)}>Cancel</button>
+              {showNewItemAction ? (
+                <button type="button" className="primary-btn" onClick={() => { openNewItem(scanNotFound); setScanNotFound(null); }}>
+                  + Create New Item
+                </button>
+              ) : null}
             </footer>
           </section>
         </div>
+      ) : null}
+
+      {cameraOpen ? (
+        <CameraScanner
+          onDetected={async (code) => {
+            setCameraOpen(false);
+            const trimmedCode = code.trim();
+            const lowerCode = trimmedCode.toLowerCase();
+            if (lowerCode.startsWith("att:")) {
+              try {
+                const userId = identity?.id || (identity?.name ? identity.name.toLowerCase().replace(/\s+/g, "_") : "warehouse_user");
+                const result = await scanAttendance.mutateAsync({ token: trimmedCode, userId, name: identity?.name || "Warehouse User" });
+                setAttendanceNotice({ type: "success", text: `${result.message} (${result.sessionId})` });
+              } catch (error) {
+                setAttendanceNotice({ type: "warning", text: (error as Error).message || "Failed to mark attendance." });
+              }
+              return;
+            }
+            // Singapore: check if scanned code is a bin location
+            if (isSingaporeSession && binOptions.some((b) => b.toLowerCase() === lowerCode)) {
+              const matchedBin = binOptions.find((b) => b.toLowerCase() === lowerCode) ?? trimmedCode;
+              setScannedBin(matchedBin);
+              setQuery("");
+              setActiveItemId(null);
+              return;
+            }
+            const matches = scanMatchPool.filter(
+              (item) => item.code.toLowerCase() === lowerCode || (item.batch && item.batch.toLowerCase() === lowerCode)
+            );
+            if (matches.length === 1) {
+              setActiveItemId(matches[0].id);
+            } else if (matches.length > 1) {
+              setQuery(trimmedCode);
+            } else {
+              setScanNotFound(trimmedCode);
+            }
+          }}
+          onClose={() => setCameraOpen(false)}
+        />
       ) : null}
 
       {multiScanOpen ? (
@@ -612,7 +669,9 @@ export function WarehousePage() {
                   {multiScanSubmitting ? "Saving..." : "Process Scan"}
                 </button>
               </div>
-              {multiScanNotice ? <div className="banner warning">{multiScanNotice}</div> : null}
+              {multiScanNotice ? (
+                <BannerModal type="warning" message={multiScanNotice} onClose={() => setMultiScanNotice("")} />
+              ) : null}
             </div>
 
             {multiScanCount > 0 ? (
@@ -654,10 +713,9 @@ export function WarehousePage() {
       ) : null}
 
       {newItemOpen ? (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="New Item">
-          <form
-            className="modal modal-wide"
-            onSubmit={async (event) => {
+        <form
+          className="panel"
+          onSubmit={async (event) => {
               event.preventDefault();
               setNewItemError("");
               if (!selectedSessionId) {
@@ -710,24 +768,17 @@ export function WarehousePage() {
                 setNewItemRemark("");
                 setNewItemPhotos([]);
                 setNewItemError("");
+                setQuery("");
               } catch (error) {
                 setNewItemError((error as Error).message || "Failed to submit new item.");
               }
             }}
           >
-            <header>
-              <h2>Add New Item</h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setNewItemOpen(false);
-                  setNewItemError("");
-                }}
-                className="ghost-btn"
-              >
-                X
-              </button>
-            </header>
+            <button type="button" className="cv-back-btn" onClick={() => { setNewItemOpen(false); setNewItemError(""); }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>
+              <span>Back to search</span>
+            </button>
+            <h2>Add New Item</h2>
             <p className="cv-page-sub">Not in SAP master - submit for admin review.</p>
             <div className="cv-form-section">
               <div className="count-form-grid">
@@ -741,76 +792,127 @@ export function WarehousePage() {
                 </label>
                 <label>
                   UOM
-                  <input className="cv-field-input" value={newItemUom} onChange={(event) => setNewItemUom(event.target.value)} />
+                  <input
+                    className="cv-field-input"
+                    list="uom-options"
+                    value={newItemUom}
+                    onChange={(event) => setNewItemUom(event.target.value)}
+                    placeholder="Select or type..."
+                  />
+                  <datalist id="uom-options">
+                    <option value="unit" />
+                    <option value="pcs" />
+                    <option value="vial" />
+                    <option value="bottle" />
+                    <option value="pack" />
+                    <option value="box" />
+                    <option value="kit" />
+                  </datalist>
                 </label>
                 <label>
                   Serial / Batch No.
                   <input className="cv-field-input" value={newItemBatch} onChange={(event) => setNewItemBatch(event.target.value)} />
                 </label>
-                <label>
-                  Bin Location
-                  <select className="cv-field-input" value={newItemWarehouse} onChange={(event) => setNewItemWarehouse(event.target.value)}>
-                    <option value="">Select bin...</option>
-                    {warehouseOptions.map((wh) => (
-                      <option key={wh} value={wh}>{wh}</option>
-                    ))}
-                  </select>
-                </label>
+                <div>
+                  <span className="cv-field-label">Bin Location</span>
+                  <div className="cv-bin-input-row">
+                    <select className="cv-field-input cv-bin-search-input" value={newItemWarehouse} onChange={(event) => setNewItemWarehouse(event.target.value)}>
+                      <option value="">Select bin...</option>
+                      {binOptions.map((wh) => (
+                        <option key={wh} value={wh}>{wh}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="cv-bin-scan-btn"
+                      title="Scan bin barcode"
+                      onClick={() => setNewItemBinScanOpen(true)}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="3" y="3" width="4" height="4" rx="0.5" /><rect x="17" y="3" width="4" height="4" rx="0.5" /><rect x="3" y="17" width="4" height="4" rx="0.5" />
+                        <line x1="7" y1="5" x2="17" y2="5" /><line x1="7" y1="19" x2="12" y2="19" /><line x1="19" y1="7" x2="19" y2="17" /><line x1="5" y1="7" x2="5" y2="17" /><line x1="12" y1="12" x2="12" y2="19" /><line x1="12" y1="12" x2="19" y2="12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
                 <label>
                   Counted Qty
-                  <QuantityField value={newItemQty} onChange={setNewItemQty} />
+                  <QuantityField value={newItemQty} onChange={setNewItemQty} hideButtons />
                 </label>
                 <label>
                   Damaged Qty
-                  <QuantityField value={newItemDamagedQty} onChange={setNewItemDamagedQty} />
+                  <QuantityField value={newItemDamagedQty} onChange={setNewItemDamagedQty} hideButtons />
                 </label>
                 <label>
                   Expired Qty
-                  <QuantityField value={newItemExpiredQty} onChange={setNewItemExpiredQty} />
+                  <QuantityField value={newItemExpiredQty} onChange={setNewItemExpiredQty} hideButtons />
                 </label>
                 <label className="count-form-full">
                   Remark
                   <textarea className="cv-textarea" rows={2} value={newItemRemark} onChange={(event) => setNewItemRemark(event.target.value)} />
                 </label>
                 <div className="count-form-full">
-                  <label htmlFor="new-item-photo-input">Photos (at least one required)</label>
+                  <div className="cv-photo-label">Photos (at least one required)</div>
                   <input
+                    ref={newItemPhotoRef}
                     id="new-item-photo-input"
                     type="file"
                     accept="image/*"
-                    multiple
+                    capture="environment"
                     style={{ display: "none" }}
-                    onChange={(event) => {
-                      const files = Array.from(event.target.files ?? []);
-                      setNewItemPhotos(files.map((file) => file.name));
+                    onChange={async (event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      if (newItemPhotoRef.current) newItemPhotoRef.current.value = "";
+                      try {
+                        const url = await uploadPhoto(file);
+                        setNewItemPhotos((prev) => [...prev, url]);
+                      } catch (err) {
+                        setNewItemError((err as Error).message || "Failed to upload photo.");
+                      }
                     }}
                   />
-                  <label htmlFor="new-item-photo-input" className="cv-photo-btn" style={{ cursor: "pointer" }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{newItemPhotos.length > 0 ? "Change Photos" : "Add Photos"}</div>
-                      <div className="cv-photo-sub">
-                        {newItemPhotos.length === 0 ? "No photos selected" : `${newItemPhotos.length} photo(s) selected`}
-                      </div>
-                    </div>
+                  <label htmlFor="new-item-photo-input" className="cv-photo-btn" style={{ cursor: "pointer" }} title={newItemPhotos.length === 0 ? "Take photo" : `${newItemPhotos.length} photo(s)`}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                    {newItemPhotos.length > 0 ? <span className="cv-photo-count">{newItemPhotos.length}</span> : null}
                   </label>
                   {newItemPhotos.length > 0 ? (
-                    <div className="photo-preview-row">
-                      {newItemPhotos.map((photo) => (
-                        <span key={photo} className="photo-preview-chip">
-                          {photo}
-                        </span>
+                    <div className="cv-photo-thumbs">
+                      {newItemPhotos.map((src, i) => (
+                        <div key={i} className="cv-photo-thumb-wrap">
+                          <img src={src} alt={`Photo ${i + 1}`} className="cv-photo-thumb" />
+                          <button
+                            type="button"
+                            className="cv-photo-thumb-remove"
+                            onClick={() => setNewItemPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                          >×</button>
+                        </div>
                       ))}
                     </div>
                   ) : null}
                 </div>
               </div>
-              {newItemError ? <div className="banner warning">{newItemError}</div> : null}
+              {newItemError ? (
+                <BannerModal type="warning" message={newItemError} onClose={() => setNewItemError("")} />
+              ) : null}
               <button type="submit" className="primary-btn" disabled={createNewItem.isPending}>
                 {createNewItem.isPending ? "Submitting..." : "Submit New Item"}
               </button>
             </div>
-          </form>
-        </div>
+        </form>
+      ) : null}
+
+      {newItemBinScanOpen ? (
+        <CameraScanner
+          onDetected={(code) => {
+            setNewItemBinScanOpen(false);
+            setNewItemWarehouse(code.trim());
+          }}
+          onClose={() => setNewItemBinScanOpen(false)}
+        />
       ) : null}
 
       {layoutOpen ? (

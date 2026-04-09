@@ -68,7 +68,7 @@ export interface ItemMasterItem {
   damagedQty?: number | null;
   expiredQty?: number | null;
   dropped: boolean;
-  status: "Matched" | "Variance" | "Pending";
+  status: "Matched" | "Variance" | "Pending" | "Not Found";
   countStatus?: string | null;
   newItem?: "Yes" | "No" | null;
   source?: string | null;
@@ -129,6 +129,7 @@ export interface NewItemCreateInput {
 
 export interface ApprovalRecord {
   id: string;
+  itemId?: string;
   itemCode: string;
   itemName: string;
   oldQty: number;
@@ -140,6 +141,15 @@ export interface ApprovalRecord {
   createdAt?: string;
   reviewedBy?: string | null;
   reviewedAt?: string | null;
+}
+
+export interface CreateAdjustmentInput {
+  sessionId: string;
+  itemId: string;
+  newQty: number;
+  newBinLocation?: string;
+  submittedBy: string;
+  remark?: string;
 }
 
 export interface DashboardSummary {
@@ -221,7 +231,7 @@ export interface CountHistoryEntry {
   qty: number;
   countedAt: string;
   submittedBy: string;
-  warehouse?: string;
+  binLocation?: string;
   remark?: string;
 }
 

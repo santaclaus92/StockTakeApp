@@ -9,9 +9,10 @@ interface QuantityFieldProps {
   step?: number;
   disabled?: boolean;
   id?: string;
+  hideButtons?: boolean;
 }
 
-export function QuantityField({ value, onChange, min = 0, max, step = 1, disabled, id }: QuantityFieldProps) {
+export function QuantityField({ value, onChange, min = 0, max, step = 1, disabled, id, hideButtons = false }: QuantityFieldProps) {
   return (
     <NumberField.Root
       id={id}
@@ -23,17 +24,21 @@ export function QuantityField({ value, onChange, min = 0, max, step = 1, disable
       disabled={disabled}
     >
       <NumberField.Group className="qty-field-group">
-        <NumberField.Decrement className="qty-field-btn qty-field-decrement">
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-            <path d="M1 5H9" />
-          </svg>
-        </NumberField.Decrement>
+        {!hideButtons ? (
+          <NumberField.Decrement className="qty-field-btn qty-field-decrement">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+              <path d="M1 5H9" />
+            </svg>
+          </NumberField.Decrement>
+        ) : null}
         <NumberField.Input className="qty-field-input" />
-        <NumberField.Increment className="qty-field-btn qty-field-increment">
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-            <path d="M5 1V9M1 5H9" />
-          </svg>
-        </NumberField.Increment>
+        {!hideButtons ? (
+          <NumberField.Increment className="qty-field-btn qty-field-increment">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+              <path d="M5 1V9M1 5H9" />
+            </svg>
+          </NumberField.Increment>
+        ) : null}
       </NumberField.Group>
     </NumberField.Root>
   );

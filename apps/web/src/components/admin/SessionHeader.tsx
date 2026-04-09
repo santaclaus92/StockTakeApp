@@ -5,22 +5,28 @@ interface SessionHeaderProps {
   session: Session;
   visibilityUpdating?: boolean;
   endingSession?: boolean;
+  loadingRecountItems?: boolean;
+  hasLinkedRecount?: boolean;
   parentSessionName?: string | null;
   linkedRecountName?: string | null;
   onToggleVisibility: () => void;
   onOpenDashboard: () => void;
   onEndSession: () => void;
+  onLoadRecountItems?: () => void;
 }
 
 export function SessionHeader({
   session,
   visibilityUpdating = false,
   endingSession = false,
+  loadingRecountItems = false,
+  hasLinkedRecount = false,
   parentSessionName = null,
   linkedRecountName = null,
   onToggleVisibility,
   onOpenDashboard,
-  onEndSession
+  onEndSession,
+  onLoadRecountItems
 }: SessionHeaderProps) {
   const statusClass = session.status === "Active" ? "status-active" : session.status === "Closed" ? "status-closed" : "status-pending";
   const visibilityLabel = session.userVisible ? "Visible to users" : "Hidden from users";
@@ -60,6 +66,11 @@ export function SessionHeader({
               {endingSession ? "Ending..." : "End session"}
             </button>
           ) : null}
+          {!session.isRecount && session.status === "Closed" && hasLinkedRecount && onLoadRecountItems ? (
+            <button type="button" className="btn btn-sm" onClick={onLoadRecountItems} disabled={loadingRecountItems}>
+              {loadingRecountItems ? "Loading..." : "Load recount items"}
+            </button>
+          ) : null}
         </div>
       </div>
       <div className="sess-meta-row">
@@ -86,13 +97,13 @@ export function SessionHeader({
         ) : null}
       </div>
       {session.isRecount && parentSessionName ? (
-        <div className="banner session-recount-banner">
-          Recount linked to parent session: <strong>{parentSessionName}</strong>
+        <div className="sess-linked-notice">
+          This session is linked to <strong>{parentSessionName}</strong>
         </div>
       ) : null}
       {!session.isRecount && linkedRecountName ? (
-        <div className="banner warning session-linked-recount-banner">
-          Variance and new items will pass to recount session: <strong>{linkedRecountName}</strong>
+        <div className="sess-linked-notice">
+          This session is linked to <strong>{linkedRecountName}</strong>
         </div>
       ) : null}
     </section>

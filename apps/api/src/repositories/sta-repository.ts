@@ -3,6 +3,7 @@ import type {
   ApprovalRecord,
   BulkAssignInput,
   CountHistoryEntry,
+  CreateAdjustmentInput,
   AttendanceRecord,
   AttendanceUpsertInput,
   AuditEntry,
@@ -63,6 +64,8 @@ export interface StaRepository {
 
   listApprovals(sessionId: string): Promise<ApprovalRecord[]>;
   actOnApproval(input: ApprovalActionInput): Promise<ApprovalRecord | null>;
+  createAdjustment(input: CreateAdjustmentInput): Promise<ApprovalRecord>;
+  listAdjustments(filters: { submittedBy?: string; sessionId?: string }): Promise<ApprovalRecord[]>;
 
   listBins(): Promise<string[]>;
   listWhCodes(sessionId?: string): Promise<string[]>;
@@ -76,4 +79,9 @@ export interface StaRepository {
   resetSessionAssignments(sessionId: string): Promise<SessionAssignmentResetResult>;
 
   importWebhookPayload(payload: WebhookImportPayload): Promise<{ imported: number }>;
+
+  findLinkedRecountSessions(parentSessionId: string): Promise<Session[]>;
+  autoAssignNewItemsToAdminPairs(parentSessionId: string, recountSessionId: string): Promise<number>;
+  autoLoadItemsToRecountSession(parentSessionId: string, recountSessionId: string): Promise<number>;
+  autoAssignRecountItems(recountSessionId: string): Promise<void>;
 }

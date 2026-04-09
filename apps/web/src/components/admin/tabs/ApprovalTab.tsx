@@ -1,5 +1,6 @@
-﻿import { useMemo } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useApprovalsQuery, useReviewApprovalMutation } from "../../../hooks/useAdminData";
+import { BannerModal } from "../../ui/BannerModal";
 
 interface ApprovalTabProps {
   sessionId: string;
@@ -17,6 +18,9 @@ export function ApprovalTab({ sessionId }: ApprovalTabProps) {
   const pendingRows = useMemo(() => data.filter((approval) => approval.status === "Pending"), [data]);
   const reviewedRows = useMemo(() => data.filter((approval) => approval.status !== "Pending"), [data]);
 
+  const [errorDismissed, setErrorDismissed] = useState(false);
+  useEffect(() => { setErrorDismissed(false); }, [isError]);
+
   return (
     <section className="panel">
       <div className="tab-header-row">
@@ -31,9 +35,9 @@ export function ApprovalTab({ sessionId }: ApprovalTabProps) {
         </div>
       </div>
 
-      {isLoading ? <div className="banner">Loading pending approvals...</div> : null}
-      {isError ? <div className="banner warning">{(error as Error).message}</div> : null}
-      {!isLoading && !isError && pendingRows.length === 0 ? <div className="banner">No pending approvals.</div> : null}
+      {isError && !errorDismissed ? (
+        <BannerModal type="warning" message={(error as Error).message} onClose={() => setErrorDismissed(true)} />
+      ) : null}
 
       <table className="legacy-table">
         <thead>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useAttendanceQuery,
   useCreatePairMutation,
@@ -10,7 +10,9 @@ import {
   useUpdatePairMutation,
   useUsersQuery
 } from "../../../hooks/useAdminData";
+import { useBinsQuery } from "../../../hooks/useWarehouseData";
 import type { PairAssignment } from "../../../types/domain";
+import { BannerModal } from "../../ui/BannerModal";
 
 interface PairAssignmentTabProps {
   sessionId: string;
@@ -58,13 +60,40 @@ function normalizeName(value: string): string {
   return value.trim().toLowerCase();
 }
 
+function getAvailableOptions(
+  allNames: string[],
+  pairedNames: Set<string>,
+  ownValue: string,
+  otherValues: (string | undefined)[]
+): string[] {
+  const ownNormalized = normalizeName(ownValue);
+  const otherNormalized = new Set(otherValues.filter(Boolean).map((v) => normalizeName(v!)));
+  const result: string[] = [];
+  const seen = new Set<string>();
+  if (ownValue) {
+    result.push(ownValue);
+    seen.add(ownNormalized);
+  }
+  for (const name of allNames) {
+    const normalized = normalizeName(name);
+    if (seen.has(normalized)) continue;
+    if (pairedNames.has(normalized)) continue;
+    if (otherNormalized.has(normalized)) continue;
+    result.push(name);
+    seen.add(normalized);
+  }
+  return result;
+}
+
 export function PairAssignmentTab({ sessionId, isRecount, strictRoles, onToggleStrictRoles }: PairAssignmentTabProps) {
   const { data: pairs = [], isLoading } = usePairsQuery(sessionId);
   const { data: attendees = [] } = useAttendanceQuery(sessionId);
   const { data: items = [] } = useItemsQuery(sessionId);
+  const { data: allBins = [] } = useBinsQuery(isRecount);
   const usersQuery = useUsersQuery();
   const importBins = useImportBinsFromPaMutation(sessionId);
   const importUsers = useImportUsersFromPaMutation(sessionId);
+  const drawerSelectRef = useRef<HTMLSelectElement>(null);
   const createPair = useCreatePairMutation(sessionId);
   const updatePair = useUpdatePairMutation(sessionId);
   const deletePair = useDeletePairMutation(sessionId);
@@ -80,23 +109,29 @@ export function PairAssignmentTab({ sessionId, isRecount, strictRoles, onToggleS
   const [repairState, setRepairState] = useState<RepairState | null>(null);
   const [repairSelection, setRepairSelection] = useState("");
   const [importFeedback, setImportFeedback] = useState<{ type: "success" | "warning"; text: string } | null>(null);
+  const [absentBannerDismissed, setAbsentBannerDismissed] = useState(false);
 
   const nameOptions = useMemo(
     () => (usersQuery.data ?? []).map((user) => user.name).filter(Boolean).sort((a, b) => a.localeCompare(b)),
     [usersQuery.data]
   );
-  const nameOptionsWithDraft = useMemo(() => {
-    const names = [...nameOptions];
-    [draft.counter, draft.checker, draft.counter2].forEach((value) => {
-      if (!value) return;
-      if (!names.includes(value)) names.unshift(value);
+
+  // Names already assigned in any pair except the one currently being edited
+  const pairedNamesExcludingEdit = useMemo(() => {
+    const names = new Set<string>();
+    pairs.forEach((pair) => {
+      if (pair.id === editingPairId) return;
+      [pair.counter, pair.checker, pair.counter2].forEach((name) => {
+        if (name) names.add(normalizeName(name));
+      });
     });
     return names;
-  }, [draft.checker, draft.counter, draft.counter2, nameOptions]);
+  }, [pairs, editingPairId]);
   const warehouseOptions = useMemo(() => {
+    if (isRecount && allBins.length > 0) return allBins;
     const options = Array.from(new Set(items.map((item) => item.warehouse).filter(Boolean))).sort((a, b) => a.localeCompare(b));
     return options.length > 0 ? options : ["-"];
-  }, [items]);
+  }, [isRecount, allBins, items]);
 
   const attendeeByName = useMemo(() => {
     const next = new Map<string, { attended: boolean; name: string }>();
@@ -160,6 +195,8 @@ export function PairAssignmentTab({ sessionId, isRecount, strictRoles, onToggleS
     }).length;
   }, [attendeeByName, attendees.length, pairs]);
 
+  useEffect(() => { setAbsentBannerDismissed(false); }, [absentLinkedCount, missingAttendanceNames.length]);
+
   const visiblePairs = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return pairs;
@@ -184,15 +221,24 @@ export function PairAssignmentTab({ sessionId, isRecount, strictRoles, onToggleS
         .map((value) => normalizeName(value))
     );
     const targetNameNormalized = normalizeName(repairState.targetName);
+    const otherPairedNames = new Set<string>();
+    pairs.forEach((pair) => {
+      if (pair.id === repairState.pairId) return;
+      [pair.counter, pair.checker, pair.counter2].forEach((name) => {
+        if (name) otherPairedNames.add(normalizeName(name));
+      });
+    });
 
     return (usersQuery.data ?? [])
       .filter((user) => {
         const normalized = normalizeName(user.name);
         if (normalized === targetNameNormalized) return false;
-        return !existingMembers.has(normalized);
+        if (existingMembers.has(normalized)) return false;
+        if (otherPairedNames.has(normalized)) return false;
+        return true;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [repairPair, repairState, usersQuery.data]);
+  }, [repairPair, repairState, usersQuery.data, pairs]);
 
   const drawerItems = useMemo(() => {
     if (!drawerPair) return [];
@@ -415,7 +461,13 @@ export function PairAssignmentTab({ sessionId, isRecount, strictRoles, onToggleS
           </button>
         </div>
       </div>
-      {importFeedback ? <div className={`banner ${importFeedback.type}`}>{importFeedback.text}</div> : null}
+      {importFeedback ? (
+        <BannerModal
+          type={importFeedback.type}
+          message={importFeedback.text}
+          onClose={() => setImportFeedback(null)}
+        />
+      ) : null}
 
       <div className="pair-search-wrap">
         <input
@@ -443,13 +495,14 @@ export function PairAssignmentTab({ sessionId, isRecount, strictRoles, onToggleS
         </div>
       </div>
 
-      {(absentLinkedCount > 0 || missingAttendanceNames.length > 0) && attendees.length > 0 ? (
-        <div className="banner warning">
-          {missingAttendanceNames.length > 0
-            ? `Warning: ${missingAttendanceNames.length} pair member(s) are not in attendance list and are marked absent: ${missingAttendanceNames.join(
-                ", "
-              )}`
-            : `Absent member alert: ${absentLinkedCount} pair(s) include attendees marked absent.`}
+      {(absentLinkedCount > 0 || missingAttendanceNames.length > 0) && attendees.length > 0 && !absentBannerDismissed ? (
+        <div className="inline-alert inline-alert-warning">
+          <span>
+            {missingAttendanceNames.length > 0
+              ? `Warning: ${missingAttendanceNames.length} pair member(s) not in attendance list (marked absent): ${missingAttendanceNames.join(", ")}`
+              : `Absent member alert: ${absentLinkedCount} pair(s) include attendees marked absent.`}
+          </span>
+          <button type="button" className="ghost-btn" onClick={() => setAbsentBannerDismissed(true)}>×</button>
         </div>
       ) : null}
 
@@ -579,7 +632,7 @@ export function PairAssignmentTab({ sessionId, isRecount, strictRoles, onToggleS
 
       {showForm ? (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={editingPairId ? "Edit Pair" : "New Pair"}>
-          <section className="modal">
+          <section className="modal" style={{ width: "70vw", maxWidth: "70vw" }}>
             <header>
               <h2>{editingPairId ? "Edit Pair" : "New Pair"}</h2>
               <button type="button" onClick={() => setShowForm(false)} className="ghost-btn">
@@ -587,7 +640,7 @@ export function PairAssignmentTab({ sessionId, isRecount, strictRoles, onToggleS
               </button>
             </header>
 
-            <div className="inline-form three-cols pair-inline-row">
+            <div className={`inline-form ${isRecount ? "three-cols" : ""} pair-inline-row`}>
               <label>
                 Counter
                 <select
@@ -595,7 +648,7 @@ export function PairAssignmentTab({ sessionId, isRecount, strictRoles, onToggleS
                   onChange={(event) => setDraft((previous) => ({ ...previous, counter: event.target.value }))}
                 >
                   <option value="">Select...</option>
-                  {nameOptionsWithDraft.map((name) => (
+                  {getAvailableOptions(nameOptions, pairedNamesExcludingEdit, draft.counter, [draft.checker, draft.counter2]).map((name) => (
                     <option key={`counter-${name}`} value={name}>
                       {name}
                     </option>
@@ -609,23 +662,25 @@ export function PairAssignmentTab({ sessionId, isRecount, strictRoles, onToggleS
                   onChange={(event) => setDraft((previous) => ({ ...previous, checker: event.target.value }))}
                 >
                   <option value="">Select...</option>
-                  {nameOptionsWithDraft.map((name) => (
+                  {getAvailableOptions(nameOptions, pairedNamesExcludingEdit, draft.checker, [draft.counter, draft.counter2]).map((name) => (
                     <option key={`checker-${name}`} value={name}>
                       {name}
                     </option>
                   ))}
                 </select>
               </label>
-              <label>
-                Role
-                <select
-                  value={draft.role}
-                  onChange={(event) => setDraft((previous) => ({ ...previous, role: event.target.value as "Admin" | "User" }))}
-                >
-                  <option value="User">User</option>
-                  <option value="Admin">Admin</option>
-                </select>
-              </label>
+              {isRecount ? (
+                <label>
+                  Role
+                  <select
+                    value={draft.role}
+                    onChange={(event) => setDraft((previous) => ({ ...previous, role: event.target.value as "Admin" | "User" }))}
+                  >
+                    <option value="User">User</option>
+                    <option value="Admin">Admin</option>
+                  </select>
+                </label>
+              ) : null}
             </div>
 
             <div className="inline-form pair-inline-row">
@@ -636,7 +691,7 @@ export function PairAssignmentTab({ sessionId, isRecount, strictRoles, onToggleS
                   onChange={(event) => setDraft((previous) => ({ ...previous, counter2: event.target.value || undefined }))}
                 >
                   <option value="">(none)</option>
-                  {nameOptionsWithDraft.map((name) => (
+                  {getAvailableOptions(nameOptions, pairedNamesExcludingEdit, draft.counter2 ?? "", [draft.counter, draft.checker]).map((name) => (
                     <option key={`counter2-${name}`} value={name}>
                       {name}
                     </option>
@@ -678,7 +733,7 @@ export function PairAssignmentTab({ sessionId, isRecount, strictRoles, onToggleS
 
       {drawerPair ? (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Recount Pair Drawer">
-          <section className="modal drawer-modal">
+          <section className="modal drawer-modal" style={{ width: "70vw", maxWidth: "70vw", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
             <header>
               <h2>
                 Items - {drawerPair.counter} / {drawerPair.checker}
@@ -711,16 +766,24 @@ export function PairAssignmentTab({ sessionId, isRecount, strictRoles, onToggleS
             <label>
               Recount bins
               <select
+                ref={drawerSelectRef}
                 multiple
                 value={splitBins(drawerWarehouse || drawerPair.warehouse)}
+                style={{ resize: "vertical", minHeight: 120, height: 180 }}
                 onChange={(event) => {
                   const selected = Array.from(event.currentTarget.selectedOptions).map((option) => option.value);
                   setDrawerWarehouse(selected.join(",") || "-");
                 }}
+                onClick={(event) => {
+                  // Shift+click multiselect: handled natively by the browser for <select multiple>
+                  const el = event.currentTarget;
+                  const selected = Array.from(el.selectedOptions).map((option) => option.value);
+                  setDrawerWarehouse(selected.join(",") || "-");
+                }}
               >
-                {warehouseOptions.map((warehouse) => (
-                  <option key={warehouse} value={warehouse}>
-                    {warehouse}
+                {(allBins.length > 0 ? allBins : warehouseOptions).map((bin) => (
+                  <option key={bin} value={bin}>
+                    {bin}
                   </option>
                 ))}
               </select>

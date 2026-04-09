@@ -14,10 +14,13 @@ export class WebhookController {
   };
 
   importUsers = async (request: Request<object, object, WebhookImportUsersBody>, response: Response) => {
+    const rows = request.body.data;
+    console.log("[importUsers] rows received:", rows?.length ?? 0, "| sample:", JSON.stringify(rows?.[0]).slice(0, 200));
     const result = await this.service.importWebhookPayload({
       source: "users",
-      data: request.body.data
+      data: rows
     });
+    console.log("[importUsers] result:", result);
     response.status(201).json(result);
   };
 

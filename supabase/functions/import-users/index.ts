@@ -1,4 +1,4 @@
-// import-users — fetches users from Power Automate then writes to DB using service role key (bypasses RLS)
+// import-users — fetches users from Power Automate then syncs to DB using service role key (bypasses RLS)
 // Deploy: supabase functions deploy import-users
 // Secret:  supabase secrets set PA_USERS_URL="https://..."
 
@@ -20,35 +20,38 @@ serve(async (req: Request) => {
   }
 
   const PA_URL = Deno.env.get("PA_USERS_URL");
-  if (!PA_URL) {
-    return new Response(JSON.stringify({ error: "PA_USERS_URL secret not configured." }), {
-      status: 500, headers: { ...CORS, "Content-Type": "application/json" },
-    });
-  }
 
   try {
-    const body = await req.text();
+    let arr: any[] = [];
 
-    // 1. Fetch from Power Automate
-    const paResp = await fetch(PA_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: body || "{}",
-    });
-    const raw = await paResp.text();
-    if (!raw) throw new Error("Power Automate returned no data.");
+    if (PA_URL) {
+      // Pull mode: edge function calls Power Automate
+      const body = await req.text();
+      const paResp = await fetch(PA_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body || "{}",
+      });
+      const raw = await paResp.text();
+      if (!raw) throw new Error("Power Automate returned no data.");
+      const data = JSON.parse(raw);
+      arr = Array.isArray(data) ? data : (data.data || data.users || data.value || data.rows || []);
+    } else {
+      // Push mode: Power Automate posted users directly in request body
+      const data = await req.json();
+      arr = Array.isArray(data) ? data : (data.data || data.users || data.value || data.rows || []);
+    }
 
-    const data = JSON.parse(raw);
-    const arr: any[] = Array.isArray(data) ? data : (data.users || data.value || []);
-    if (!arr.length) throw new Error("No users returned from Power Automate.");
+    if (!arr.length) throw new Error("No users found in payload.");
 
-    const toInsert = arr.map((u: any) => {
+    const incoming = arr.map((u: any) => {
       const ini = ((u.given_name || "")[0] || "") + ((u.surname || "")[0] || "");
+      const email = (u.email_address || u.email || "").trim().toLowerCase() || null;
       return {
         id: u.id,
         name: u.display_name || u.full_name || `${u.given_name || ""} ${u.surname || ""}`.trim(),
         display_name: u.display_name || null,
-        email: u.email_address || null,
+        email,
         department: u.department || null,
         company_name: u.company_name || null,
         job_title: u.job_title || null,
@@ -58,31 +61,60 @@ serve(async (req: Request) => {
       };
     });
 
-    // 2. Write to DB with service role key — bypasses RLS, no JWT needed
+    // Deduplicate by email then id
+    const seenEmails = new Set<string>();
+    const seenIds = new Set<string>();
+    const incomingUsers: any[] = [];
+    for (const u of incoming) {
+      if (seenIds.has(u.id)) continue;
+      if (u.email && seenEmails.has(u.email)) continue;
+      incomingUsers.push(u);
+      seenIds.add(u.id);
+      if (u.email) seenEmails.add(u.email);
+    }
+
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false } }
     );
 
-    // Preserve existing Admin / Super Admin role assignments before wiping the table
-    const { data: existingRoles } = await admin
+    // Fetch all existing users
+    const { data: existingRows, error: fetchErr } = await admin
       .from("users")
-      .select("id, role")
-      .in("role", ["Admin", "Super Admin"]);
-    const roleMap: Record<string, string> = {};
-    for (const r of existingRoles ?? []) roleMap[r.id] = r.role;
+      .select("id, email, role");
+    if (fetchErr) throw new Error("Failed to fetch existing users: " + fetchErr.message);
 
-    const { error: delErr } = await admin.from("users").delete().neq("id", "");
-    if (delErr) throw new Error("Failed to clear users: " + delErr.message);
+    const existingById = new Map<string, any>();
+    const existingByEmail = new Map<string, any>();
+    for (const row of existingRows ?? []) {
+      existingById.set(row.id, row);
+      if (row.email) existingByEmail.set(row.email.trim().toLowerCase(), row);
+    }
 
-    // Restore preserved roles for users that still exist in the new import
-    const withRoles = toInsert.map((u: any) => ({ ...u, role: roleMap[u.id] ?? "User" }));
+    // Add users not already in DB
+    const toInsert = incomingUsers
+      .filter((u) => !existingById.has(u.id) && !(u.email && existingByEmail.has(u.email)))
+      .map((u) => ({ ...u, role: "User" }));
 
-    const { error: insErr } = await admin.from("users").insert(withRoles);
-    if (insErr) throw new Error("Failed to insert users: " + insErr.message);
+    // Remove existing users not in the import
+    const incomingIds = new Set(incomingUsers.map((u) => u.id));
+    const incomingEmails = new Set(incomingUsers.map((u) => u.email).filter(Boolean));
+    const toDeleteIds = (existingRows ?? [])
+      .filter((row) => !incomingIds.has(row.id) && !(row.email && incomingEmails.has(row.email.trim().toLowerCase())))
+      .map((row) => row.id);
 
-    return new Response(JSON.stringify({ count: toInsert.length, users: toInsert }), {
+    if (toInsert.length > 0) {
+      const { error: insErr } = await admin.from("users").insert(toInsert);
+      if (insErr) throw new Error("Failed to insert users: " + insErr.message);
+    }
+
+    if (toDeleteIds.length > 0) {
+      const { error: delErr } = await admin.from("users").delete().in("id", toDeleteIds);
+      if (delErr) throw new Error("Failed to delete users: " + delErr.message);
+    }
+
+    return new Response(JSON.stringify({ imported: toInsert.length, removed: toDeleteIds.length, total: incomingUsers.length }), {
       status: 200, headers: { ...CORS, "Content-Type": "application/json" },
     });
   } catch (err) {

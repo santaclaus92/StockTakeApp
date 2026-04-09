@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { useAuditQuery } from "../../../hooks/useAdminData";
+import { BannerModal } from "../../ui/BannerModal";
 
 interface AuditTrailTabProps {
   sessionId: string;
@@ -6,6 +8,8 @@ interface AuditTrailTabProps {
 
 export function AuditTrailTab({ sessionId }: AuditTrailTabProps) {
   const { data = [], isLoading, isError, error, refetch } = useAuditQuery(sessionId);
+  const [errorDismissed, setErrorDismissed] = useState(false);
+  useEffect(() => { setErrorDismissed(false); }, [isError]);
 
   return (
     <section className="panel">
@@ -21,10 +25,8 @@ export function AuditTrailTab({ sessionId }: AuditTrailTabProps) {
         </div>
       </div>
 
-      {isLoading ? <div className="banner">Loading audit records...</div> : null}
-      {isError ? <div className="banner warning">{(error as Error).message}</div> : null}
-      {!isLoading && !isError && data.length === 0 ? (
-        <div className="banner">No audit records yet. Records appear after count submissions.</div>
+      {isError && !errorDismissed ? (
+        <BannerModal type="warning" message={(error as Error).message} onClose={() => setErrorDismissed(true)} />
       ) : null}
 
       <table className="legacy-table">

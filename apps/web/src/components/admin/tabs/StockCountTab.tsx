@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
+import { BannerModal } from "../../ui/BannerModal";
 import {
   useBulkAssignItemsMutation,
   useImportItemsFromSapMutation,
@@ -202,7 +203,12 @@ function resolveCountStatus(item: ItemMasterItem): CountStatusLabel {
   if (raw === "new item") return "New item";
   if (raw === "not found") return "Not found";
   if (item.newItem === "Yes" || item.sapQty === 0) return "New item";
-  if (item.countQty === null || item.countQty === undefined) return "Not found";
+  // When count hasn't been submitted yet, use stored status as the starting point
+  // (recount sessions carry over Variance from the parent session)
+  if (item.countQty === null || item.countQty === undefined) {
+    if (item.status === "Variance") return "Variance";
+    return "Not found";
+  }
   if (item.status === "Matched") return "Matched";
   if (item.status === "Variance") return "Variance";
   return "Pending";
@@ -240,7 +246,7 @@ function escapeCsvValue(value: string | number | null | undefined): string {
 }
 
 export function StockCountTab({ sessionId, entity, isRecount = false, parentSessionId = null }: StockCountTabProps) {
-  const { data: itemsData, isLoading } = useItemsQuery(sessionId);
+  const { data: itemsData, isLoading, refetch: refetchItems } = useItemsQuery(sessionId);
   const { data: parentItemsData = EMPTY_ITEMS } = useItemsQuery(parentSessionId ?? "", Boolean(isRecount && parentSessionId));
   const { data: pairsData } = usePairsQuery(sessionId);
   const items = itemsData ?? EMPTY_ITEMS;
@@ -264,11 +270,14 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
   const [remarkDraft, setRemarkDraft] = useState<Record<string, string>>({});
   const [showImportModal, setShowImportModal] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "warning"; text: string } | null>(null);
+  const [bulkLoadingAction, setBulkLoadingAction] = useState<"drop" | "recover" | null>(null);
   const [columnOrder, setColumnOrder] = useState<TableColumnKey[]>(BASE_COLUMN_ORDER);
   const [dragColumn, setDragColumn] = useState<TableColumnKey | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<TableColumnKey | null>(null);
   const [lastCheckedIndex, setLastCheckedIndex] = useState<number | null>(null);
   const [columnWidths, setColumnWidths] = useState<Partial<Record<TableColumnKey, number>>>(DEFAULT_COLUMN_WIDTHS);
+  const [sortColumn, setSortColumn] = useState<TableColumnKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   const layoutStorageKey = useMemo(() => buildItemMasterLayoutStorageKey(getStoredIdentityScope(), sessionId), [sessionId]);
 
@@ -350,7 +359,8 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
     >();
     parentItemsData.forEach((item) => {
       if (!item.code) return;
-      next.set(item.code, {
+      const key = `${item.code}::${item.batch ?? ""}`;
+      next.set(key, {
         bin: item.warehouse ?? null,
         by: item.submittedBy ?? item.assignedTo ?? null,
         qty: item.countQty ?? null
@@ -387,10 +397,35 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
     });
   }, [groupFilter, items, search, statusFilter, warehouseFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+  const sortedItems = useMemo(() => {
+    if (!sortColumn || sortColumn === "chk" || sortColumn === "action") return filteredItems;
+    const dir = sortDirection === "asc" ? 1 : -1;
+    return [...filteredItems].sort((a, b) => {
+      let aVal: string | number = "";
+      let bVal: string | number = "";
+      if (sortColumn === "code") { aVal = a.code; bVal = b.code; }
+      else if (sortColumn === "name") { aVal = a.name; bVal = b.name; }
+      else if (sortColumn === "grp") { aVal = a.group ?? ""; bVal = b.group ?? ""; }
+      else if (sortColumn === "batch") { aVal = a.batch ?? ""; bVal = b.batch ?? ""; }
+      else if (sortColumn === "uom") { aVal = a.uom ?? ""; bVal = b.uom ?? ""; }
+      else if (sortColumn === "sap") { aVal = a.sapQty; bVal = b.sapQty; }
+      else if (sortColumn === "cnt") { aVal = a.countQty ?? -1; bVal = b.countQty ?? -1; }
+      else if (sortColumn === "dmg") { aVal = a.damagedQty ?? -1; bVal = b.damagedQty ?? -1; }
+      else if (sortColumn === "exp") { aVal = a.expiredQty ?? -1; bVal = b.expiredQty ?? -1; }
+      else if (sortColumn === "by") { aVal = a.submittedBy ?? ""; bVal = b.submittedBy ?? ""; }
+      else if (sortColumn === "whcode") { aVal = a.whCode ?? ""; bVal = b.whCode ?? ""; }
+      else if (sortColumn === "binloc") { aVal = a.warehouse ?? ""; bVal = b.warehouse ?? ""; }
+      else if (sortColumn === "pair") { aVal = a.assignedPair ?? ""; bVal = b.assignedPair ?? ""; }
+      else if (sortColumn === "status") { aVal = resolveCountStatus(a); bVal = resolveCountStatus(b); }
+      if (typeof aVal === "number" && typeof bVal === "number") return (aVal - bVal) * dir;
+      return String(aVal).localeCompare(String(bVal)) * dir;
+    });
+  }, [filteredItems, sortColumn, sortDirection]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageStart = (safePage - 1) * PAGE_SIZE;
-  const pagedItems = filteredItems.slice(pageStart, pageStart + PAGE_SIZE);
+  const pagedItems = sortedItems.slice(pageStart, pageStart + PAGE_SIZE);
 
   useEffect(() => {
     if (page !== safePage) {
@@ -431,6 +466,7 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
   const bulkToggleDrop = async (dropped: boolean) => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
+    setBulkLoadingAction(dropped ? "drop" : "recover");
     try {
       await Promise.all(ids.map((itemId) => updateItem.mutateAsync({ itemId, dropped })));
       setFeedback({
@@ -443,6 +479,8 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
         type: "warning",
         text: (error as Error).message || "Bulk update failed."
       });
+    } finally {
+      setBulkLoadingAction(null);
     }
   };
 
@@ -707,16 +745,27 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
           <p>{itemsSubText}</p>
         </div>
         <div className="tab-actions">
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowImportModal(true)}>
-            Import from SAP
+          <button type="button" className="btn btn-sm" disabled={isLoading} onClick={() => void refetchItems()}>
+            {isLoading ? "Refreshing…" : "Refresh"}
           </button>
-<button type="button" className="btn btn-sm" onClick={exportCsv}>
+          {!isRecount && (
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowImportModal(true)}>
+              Import from SAP
+            </button>
+          )}
+          <button type="button" className="btn btn-sm" onClick={exportCsv}>
             Export CSV
           </button>
         </div>
       </div>
 
-      {feedback ? <div className={`banner ${feedback.type}`}>{feedback.text}</div> : null}
+      {feedback ? (
+        <BannerModal
+          type={feedback.type}
+          message={feedback.text}
+          onClose={() => setFeedback(null)}
+        />
+      ) : null}
 
       <div className="status-strip">
         <button type="button" className={statusFilter === "all" ? "active" : ""} onClick={() => setStatusFilter("all")}>
@@ -839,10 +888,10 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
         {selectedCount > 0 ? (
           <div className="item-master-bulk-bar">
             <span className="item-master-selected-label">{selectedCount} selected</span>
-            <button type="button" className="btn btn-sm drop-btn" onClick={() => void bulkToggleDrop(true)}>
+            <button type="button" className="btn btn-sm drop-btn" onClick={() => void bulkToggleDrop(true)} disabled={bulkLoadingAction !== null}>
               Drop selected
             </button>
-            <button type="button" className="btn btn-sm rec-btn" onClick={() => void bulkToggleDrop(false)}>
+            <button type="button" className="btn btn-sm rec-btn" onClick={() => void bulkToggleDrop(false)} disabled={bulkLoadingAction !== null}>
               Recover selected
             </button>
             {isRecount ? (
@@ -856,7 +905,7 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
                   <option value="">- Assign pair -</option>
                   {pairs.map((pair) => (
                     <option key={pair.id} value={pair.id}>
-                      {pair.id} - {pair.counter} / {pair.checker}
+                      {pair.counter} / {pair.checker}{pair.counter2 ? ` / ${pair.counter2}` : ""}
                     </option>
                   ))}
                 </select>
@@ -895,6 +944,8 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
                     );
                   }
 
+                  const isSortable = columnKey !== "chk" && columnKey !== "action" && columnKey !== "photos";
+                  const isSorted = sortColumn === columnKey;
                   return (
                     <th
                       key={columnKey}
@@ -903,7 +954,7 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
                       draggable={isColumnDraggable(columnKey)}
                       className={`${dragColumn === columnKey ? "item-col-dragging" : ""} ${
                         dragOverColumn === columnKey ? "item-col-drag-over" : ""
-                      }`}
+                      } ${isSortable ? "item-col-sortable" : ""}`}
                       onDragStart={(event) => {
                         if (!isColumnDraggable(columnKey)) return;
                         setDragColumn(columnKey);
@@ -927,8 +978,20 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
                         setDragColumn(null);
                         setDragOverColumn(null);
                       }}
+                      onClick={() => {
+                        if (!isSortable) return;
+                        if (sortColumn === columnKey) {
+                          setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
+                        } else {
+                          setSortColumn(columnKey);
+                          setSortDirection("asc");
+                        }
+                      }}
                     >
-                      <span className="item-col-label">{headerLabel(columnKey)}</span>
+                      <span className="item-col-label">
+                        {headerLabel(columnKey)}
+                        {isSorted ? (sortDirection === "asc" ? " ▲" : " ▼") : ""}
+                      </span>
                       {isColumnDraggable(columnKey) ? (
                         <span className="item-col-resizer" onMouseDown={(event) => startResize(event, columnKey)} />
                       ) : null}
@@ -950,7 +1013,7 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
                   const remarkText = (item.remark ?? "").trim();
                   const adminRemarkValue = remarkDraft[item.id] ?? item.adminRemark ?? "";
                   const photoCount = item.photos?.length ?? 0;
-                  const firstCount = firstCountByCode.get(item.code);
+                  const firstCount = firstCountByCode.get(`${item.code}::${item.batch ?? ""}`);
                   return (
                     <tr key={item.id} className={item.dropped ? "row-dropped" : ""}>
                       {orderedColumns.map((columnKey) => {
@@ -1044,9 +1107,9 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
                           );
                         }
 
-                        if (columnKey === "by") return <td key={columnKey} data-colkey={columnKey} style={style}>{item.submittedBy || "-"}</td>;
+                        if (columnKey === "by") return <td key={columnKey} data-colkey={columnKey} style={style}>{item.countQty !== null && item.countQty !== undefined ? (item.submittedBy || "") : ""}</td>;
                         if (columnKey === "whcode") return <td key={columnKey} data-colkey={columnKey} style={style}>{item.whCode || "-"}</td>;
-                        if (columnKey === "binloc") return <td key={columnKey} data-colkey={columnKey} style={style}>{item.warehouse || "-"}</td>;
+                        if (columnKey === "binloc") return <td key={columnKey} data-colkey={columnKey} style={style}>{item.countQty !== null && item.countQty !== undefined ? (item.warehouse || "") : ""}</td>;
 
                         if (columnKey === "remark") {
                           return (
@@ -1105,7 +1168,7 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
                           return (
                             <td key={columnKey} data-colkey={columnKey} style={style}>
                               {item.countQty !== null && item.countQty !== undefined ? (
-                                item.assignedTo ?? item.assignedPair ?? "-"
+                                item.assignedTo || "-"
                               ) : (
                                 <select
                                   className="select"
@@ -1116,7 +1179,7 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
                                   <option value="">-</option>
                                   {pairs.map((pair) => (
                                     <option key={pair.id} value={pair.id}>
-                                      {pair.id} - {pair.counter} / {pair.checker}
+                                      {pair.counter} / {pair.checker}{pair.counter2 ? ` / ${pair.counter2}` : ""}
                                     </option>
                                   ))}
                                 </select>
@@ -1244,7 +1307,7 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
               </div>
             ) : (
               <div className="banner warning">
-                This will fetch the latest item list from SAP and reset all current statuses, count quantities, assigned pairs, and counted-by records for this session. This cannot be undone.
+                This will delete all existing items for this session and reimport everything fresh from SAP. All count quantities, pair assignments, and statuses will be lost. This cannot be undone.
               </div>
             )}
             <footer>
@@ -1272,6 +1335,15 @@ export function StockCountTab({ sessionId, entity, isRecount = false, parentSess
               </button>
             </footer>
           </section>
+        </div>
+      ) : null}
+
+      {bulkLoadingAction !== null ? (
+        <div className="bulk-action-overlay">
+          <span className="bulk-action-spinner" />
+          <span className="bulk-action-label">
+            {bulkLoadingAction === "drop" ? "Bulk dropping items…" : "Bulk recovering items…"}
+          </span>
         </div>
       ) : null}
     </section>

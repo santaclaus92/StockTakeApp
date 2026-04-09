@@ -5,6 +5,7 @@ import type {
   ApprovalRecord,
   BulkAssignInput,
   CountHistoryEntry,
+  CreateAdjustmentInput,
   AttendanceRecord,
   AttendanceUpsertInput,
   AuditEntry,
@@ -104,7 +105,7 @@ function toItem(row: Record<string, unknown>): ItemMasterItem {
   const rawStatus = row.item_status;
   const rawStatusText = typeof rawStatus === "string" ? rawStatus.trim() : "";
   const status =
-    rawStatus === "Matched" || rawStatus === "Variance" || rawStatus === "Pending"
+    rawStatus === "Matched" || rawStatus === "Variance" || rawStatus === "Pending" || rawStatus === "Not Found"
       ? rawStatus
       : resolveItemStatus(sapQty, countQty);
 
@@ -217,14 +218,15 @@ function toApproval(row: Record<string, unknown>): ApprovalRecord {
 
   return {
     id: String(row.id),
+    itemId: row.item_id ? String(row.item_id) : undefined,
     itemCode: String(row.item_code ?? ""),
     itemName: String(row.item_name ?? ""),
     oldQty: parseNumber(row.old_qty, 0) ?? 0,
     newQty: parseNumber(row.new_qty, 0) ?? 0,
     status: normalizedStatus,
     submittedBy: String(row.submitted_by ?? ""),
-    oldBin: row.old_bin_location ? String(row.old_bin_location) : null,
-    newBin: row.new_bin_location ? String(row.new_bin_location) : null,
+    oldBin: null,
+    newBin: null,
     createdAt: row.created_at ? String(row.created_at) : undefined,
     reviewedBy: row.reviewed_by ? String(row.reviewed_by) : null,
     reviewedAt: row.reviewed_at ? String(row.reviewed_at) : null
@@ -238,6 +240,7 @@ function toWarehouseItem(row: Record<string, unknown>): WarehouseItem {
     code: String(row.code ?? ""),
     name: String(row.name ?? ""),
     warehouse: String(row.bin_location ?? ""),
+    whCode: row.wh_code ? String(row.wh_code) : null,
     assignedTo: String(row.assigned_to ?? row.pair_id ?? ""),
     sapQty: parseNumber(row.sap_qty, 0) ?? 0,
     countQty: parseNumber(row.count_qty, null),
@@ -255,10 +258,27 @@ function createCodedError(message: string, code: string, details?: unknown): Err
   return error;
 }
 
+function mergeBinLocations(existing: string | null, incoming: string | null): string | null {
+  const existingParts = existing ? existing.split(";").map(s => s.trim()).filter(Boolean) : [];
+  const incomingParts = incoming ? incoming.split(";").map(s => s.trim()).filter(Boolean) : [];
+  const merged = [...new Set([...existingParts, ...incomingParts])];
+  return merged.length > 0 ? merged.join(";") : null;
+}
+
+function updateBinLocation(current: string | null, oldBin: string | null, newBin: string | null): string | null {
+  const currentParts = current ? current.split(";").map(s => s.trim()).filter(Boolean) : [];
+  const oldParts = oldBin ? oldBin.split(";").map(s => s.trim()).filter(Boolean) : [];
+  const newParts = newBin ? newBin.split(";").map(s => s.trim()).filter(Boolean) : [];
+  const withoutOld = currentParts.filter(p => !oldParts.includes(p));
+  const merged = [...new Set([...withoutOld, ...newParts])];
+  return merged.length > 0 ? merged.join(";") : null;
+}
+
 function isMissingApprovalRpc(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const record = error as { code?: unknown };
-  return record.code === "PGRST202" || record.code === "42883";
+  // 42702 = ambiguous column reference (RPC has SQL bug), fall back to JS implementation
+  return record.code === "PGRST202" || record.code === "42883" || record.code === "42702";
 }
 
 function extractApprovalRpcRow(value: unknown): Record<string, unknown> | null {
@@ -288,7 +308,7 @@ export class SupabaseStaRepository implements StaRepository {
     const { data, error } = await this.client
       .from("sessions")
       .select(SESSION_SELECT)
-      .eq("is_deleted", false)
+      .or("is_deleted.eq.false,is_deleted.is.null")
       .order("created_at", { ascending: false });
 
     if (error) throw error;
@@ -350,7 +370,7 @@ export class SupabaseStaRepository implements StaRepository {
       .from("sessions")
       .select(SESSION_SELECT)
       .eq("id", sessionId)
-      .eq("is_deleted", false)
+      .or("is_deleted.eq.false,is_deleted.is.null")
       .maybeSingle();
 
     if (error) throw error;
@@ -372,7 +392,7 @@ export class SupabaseStaRepository implements StaRepository {
         parent_id: input.isRecount ? input.parentId ?? null : null
       })
       .eq("id", sessionId)
-      .eq("is_deleted", false)
+      .or("is_deleted.eq.false,is_deleted.is.null")
       .select(SESSION_SELECT)
       .maybeSingle();
 
@@ -388,7 +408,7 @@ export class SupabaseStaRepository implements StaRepository {
         status: "Active"
       })
       .eq("id", sessionId)
-      .eq("is_deleted", false)
+      .or("is_deleted.eq.false,is_deleted.is.null")
       .select(SESSION_SELECT)
       .maybeSingle();
 
@@ -405,7 +425,7 @@ export class SupabaseStaRepository implements StaRepository {
         progress: 100
       })
       .eq("id", sessionId)
-      .eq("is_deleted", false)
+      .or("is_deleted.eq.false,is_deleted.is.null")
       .select(SESSION_SELECT)
       .maybeSingle();
 
@@ -419,7 +439,7 @@ export class SupabaseStaRepository implements StaRepository {
       .from("sessions")
       .select("id,user_visible,status")
       .eq("id", sessionId)
-      .eq("is_deleted", false)
+      .or("is_deleted.eq.false,is_deleted.is.null")
       .maybeSingle();
 
     if (existingError) throw existingError;
@@ -436,7 +456,7 @@ export class SupabaseStaRepository implements StaRepository {
         status: nextStatus
       })
       .eq("id", sessionId)
-      .eq("is_deleted", false)
+      .or("is_deleted.eq.false,is_deleted.is.null")
       .select(SESSION_SELECT)
       .maybeSingle();
 
@@ -450,7 +470,7 @@ export class SupabaseStaRepository implements StaRepository {
       .from("sessions")
       .select("id,strict_roles")
       .eq("id", sessionId)
-      .eq("is_deleted", false)
+      .or("is_deleted.eq.false,is_deleted.is.null")
       .maybeSingle();
 
     if (existingError) throw existingError;
@@ -462,7 +482,7 @@ export class SupabaseStaRepository implements StaRepository {
       .from("sessions")
       .update({ strict_roles: nextValue })
       .eq("id", sessionId)
-      .eq("is_deleted", false)
+      .or("is_deleted.eq.false,is_deleted.is.null")
       .select(SESSION_SELECT)
       .maybeSingle();
 
@@ -476,7 +496,7 @@ export class SupabaseStaRepository implements StaRepository {
       .from("sessions")
       .select("id,name")
       .eq("id", sessionId)
-      .eq("is_deleted", false)
+      .or("is_deleted.eq.false,is_deleted.is.null")
       .maybeSingle();
     if (sessionError) throw sessionError;
     if (!session) return false;
@@ -500,7 +520,7 @@ export class SupabaseStaRepository implements StaRepository {
         deleted_at: new Date().toISOString()
       }, { count: "exact" })
       .eq("id", sessionId)
-      .eq("is_deleted", false);
+      .or("is_deleted.eq.false,is_deleted.is.null");
 
     if (error) throw error;
     return (count ?? 0) > 0;
@@ -892,6 +912,7 @@ export class SupabaseStaRepository implements StaRepository {
       batch: input.batch?.trim() || null,
       uom: input.uom?.trim() || null,
       bin_location: input.warehouse ?? null,
+      wh_code: "New Item",
       new_item: "Yes",
       item_status: "Pending",
       submitted_by: input.submittedBy,
@@ -913,7 +934,21 @@ export class SupabaseStaRepository implements StaRepository {
       .single();
 
     if (error) throw error;
-    return toNewItem(data as Record<string, unknown>);
+
+    const created = data as Record<string, unknown>;
+    await this.client.from("item_audit").insert({
+      id: `AUD-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      session_id: input.sessionId,
+      item_id: created.id,
+      item_code: input.code,
+      item_name: input.name,
+      submitted_by: input.submittedBy,
+      count_qty: input.qty ?? null,
+      warehouse: input.warehouse ?? null,
+      remark: input.remark ?? null
+    });
+
+    return toNewItem(created);
   }
 
   async updateNewItemStatus(itemId: string, status: NewItemRecord["status"]): Promise<NewItemRecord | null> {
@@ -932,10 +967,64 @@ export class SupabaseStaRepository implements StaRepository {
     return toNewItem(data as Record<string, unknown>);
   }
 
+  async createAdjustment(input: CreateAdjustmentInput): Promise<ApprovalRecord> {
+    const { data: itemRow, error: itemError } = await this.client
+      .from("items")
+      .select("id,session_id,code,name,count_qty,bin_location")
+      .eq("id", input.itemId)
+      .maybeSingle();
+
+    if (itemError || !itemRow) {
+      throw itemError ?? new Error("Item not found");
+    }
+
+    const item = itemRow as Record<string, unknown>;
+    const oldQty = parseNumber(item.count_qty, 0) ?? 0;
+
+    const row = {
+      id: `ADJ-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      session_id: input.sessionId,
+      item_id: input.itemId,
+      item_code: String(item.code ?? ""),
+      item_name: String(item.name ?? ""),
+      old_qty: oldQty,
+      new_qty: input.newQty,
+      status: "Pending",
+      submitted_by: input.submittedBy
+    };
+
+    const { data, error } = await this.client
+      .from("count_adjustments")
+      .insert(row)
+      .select("id,item_id,item_code,item_name,old_qty,new_qty,status,submitted_by,created_at,reviewed_by,reviewed_at")
+      .single();
+
+    if (error) throw error;
+    return toApproval(data as Record<string, unknown>);
+  }
+
+  async listAdjustments(filters: { submittedBy?: string; sessionId?: string }): Promise<ApprovalRecord[]> {
+    let query = this.client
+      .from("count_adjustments")
+      .select("id,item_id,item_code,item_name,old_qty,new_qty,status,submitted_by,created_at,reviewed_by,reviewed_at")
+      .order("created_at", { ascending: false });
+
+    if (filters.sessionId) {
+      query = query.eq("session_id", filters.sessionId);
+    }
+    if (filters.submittedBy) {
+      query = query.ilike("submitted_by", `%${filters.submittedBy.trim()}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data ?? []).map((row) => toApproval(row as Record<string, unknown>));
+  }
+
   async listApprovals(sessionId: string): Promise<ApprovalRecord[]> {
     const { data, error } = await this.client
       .from("count_adjustments")
-      .select("id,item_code,item_name,old_qty,new_qty,old_bin_location,new_bin_location,status,submitted_by,created_at,reviewed_by,reviewed_at")
+      .select("id,item_id,item_code,item_name,old_qty,new_qty,status,submitted_by,created_at,reviewed_by,reviewed_at")
       .eq("session_id", sessionId)
       .order("created_at", { ascending: false });
 
@@ -995,7 +1084,7 @@ export class SupabaseStaRepository implements StaRepository {
       .eq("id", input.approvalId)
       .eq("session_id", input.sessionId)
       .eq("status", "Pending")
-      .select("id,item_code,item_name,old_qty,new_qty,old_bin_location,new_bin_location,status,submitted_by,created_at,reviewed_by,reviewed_at")
+      .select("id,item_code,item_name,old_qty,new_qty,status,submitted_by,created_at,reviewed_by,reviewed_at")
       .maybeSingle();
 
     if (updateAdjustmentError) throw updateAdjustmentError;
@@ -1028,7 +1117,14 @@ export class SupabaseStaRepository implements StaRepository {
     const adjustedQty = currentQty - oldQty + newQty;
 
     const sapQty = parseNumber((itemRow as Record<string, unknown>).sap_qty, 0) ?? 0;
-    const approvedBin = String(adj.new_bin_location ?? adj.old_bin_location ?? (itemRow as Record<string, unknown>).bin_location ?? "");
+    const currentBin = (itemRow as Record<string, unknown>).bin_location
+      ? String((itemRow as Record<string, unknown>).bin_location)
+      : null;
+    const approvedBin = updateBinLocation(
+      currentBin,
+      adj.old_bin_location ? String(adj.old_bin_location) : null,
+      adj.new_bin_location ? String(adj.new_bin_location) : null
+    ) ?? "";
     const status = resolveItemStatus(sapQty, adjustedQty);
 
     const { error: itemUpdateError } = await this.client
@@ -1106,7 +1202,7 @@ export class SupabaseStaRepository implements StaRepository {
     while (true) {
       let base = this.client
         .from("items")
-        .select("id,session_id,code,name,batch,bin_location,assigned_to,pair_id,sap_qty,count_qty,photos,uom,packaging_size")
+        .select("id,session_id,code,name,batch,bin_location,wh_code,assigned_to,pair_id,sap_qty,count_qty,photos,uom,packaging_size")
         .eq("dropped", false)
         .order("code", { ascending: true })
         .range(from, from + PAGE_SIZE - 1);
@@ -1137,7 +1233,7 @@ export class SupabaseStaRepository implements StaRepository {
     const userName = input?.userName?.trim() ?? "";
     let query = this.client
       .from("items")
-      .select("id,session_id,code,name,bin_location,assigned_to,pair_id,sap_qty,count_qty,photos,uom,packaging_size")
+      .select("id,session_id,code,name,bin_location,wh_code,assigned_to,pair_id,sap_qty,count_qty,photos,uom,packaging_size")
       .eq("dropped", false)
       .order("code", { ascending: true });
 
@@ -1171,7 +1267,7 @@ export class SupabaseStaRepository implements StaRepository {
   async submitCount(input: CountSubmissionInput): Promise<void> {
     const { data: currentItem, error: itemError } = await this.client
       .from("items")
-      .select("id,session_id,code,name,sap_qty,bin_location,pair_id,photos")
+      .select("id,session_id,code,name,sap_qty,count_qty,bin_location,pair_id,photos")
       .eq("id", input.itemId)
       .maybeSingle();
 
@@ -1181,13 +1277,24 @@ export class SupabaseStaRepository implements StaRepository {
 
     const row = currentItem as Record<string, unknown>;
     const sapQty = parseNumber(row.sap_qty, 0) ?? 0;
-    const status = resolveItemStatus(sapQty, input.qty);
+
+    // Sum count qty when the same item is counted by multiple counters
+    const existingCountQty = parseNumber(row.count_qty, 0) ?? 0;
+    const newCountQty = existingCountQty + input.qty;
+
+    const status = resolveItemStatus(sapQty, newCountQty);
 
     const existingPhotos: string[] = Array.isArray(row.photos) ? (row.photos as unknown[]).map(String) : [];
     const mergedPhotos = input.photos && input.photos.length > 0 ? [...existingPhotos, ...input.photos] : existingPhotos;
 
+    // Merge bin locations: combine existing bins with newly submitted bins (deduplicated)
+    const resolvedBin = mergeBinLocations(
+      row.bin_location ? String(row.bin_location) : null,
+      input.binLocation ?? null
+    );
+
     const updatePayload: Record<string, unknown> = {
-      count_qty: input.qty,
+      count_qty: newCountQty,
       damaged_qty: input.damagedQty ?? null,
       expired_qty: input.expiredQty ?? null,
       item_status: status,
@@ -1195,8 +1302,8 @@ export class SupabaseStaRepository implements StaRepository {
       remark: input.remark ?? null,
       photos: mergedPhotos
     };
-    if (input.binLocation) {
-      updatePayload.bin_location = input.binLocation;
+    if (resolvedBin) {
+      updatePayload.bin_location = resolvedBin;
     }
 
     const { error: updateError } = await this.client
@@ -1217,7 +1324,7 @@ export class SupabaseStaRepository implements StaRepository {
       count_qty: input.qty,
       damaged_qty: input.damagedQty ?? null,
       expired_qty: input.expiredQty ?? null,
-      warehouse: row.bin_location,
+      warehouse: resolvedBin,
       remark: input.remark ?? null
     });
 
@@ -1264,7 +1371,7 @@ export class SupabaseStaRepository implements StaRepository {
       qty: parseNumber(row.count_qty, 0) ?? 0,
       countedAt: String(row.counted_at ?? new Date().toISOString()),
       submittedBy: String(row.submitted_by ?? ""),
-      warehouse: row.warehouse ? String(row.warehouse) : undefined,
+      binLocation: row.warehouse ? String(row.warehouse) : undefined,
       remark: row.remark ? String(row.remark) : undefined
     }));
   }
@@ -1367,55 +1474,60 @@ export class SupabaseStaRepository implements StaRepository {
 
   async importWebhookPayload(payload: WebhookImportPayload): Promise<{ imported: number }> {
     if (payload.source === "bins") {
-      const deduped = new Map<string, { id: string; name: string }>();
+      const incomingBins = new Map<string, { id: string; name: string }>();
       for (const row of payload.data) {
         const record = row as Record<string, unknown>;
         const id = String(record.bin_location ?? record.id ?? "").trim();
         if (!id) continue;
-        deduped.set(id, {
-          id,
-          name: String(record.location_assigned ?? record.name ?? id)
-        });
+        incomingBins.set(id, { id, name: String(record.location_assigned ?? record.name ?? id) });
       }
+      if (incomingBins.size === 0) return { imported: 0 };
 
-      const bins = Array.from(deduped.values());
-      if (bins.length === 0) return { imported: 0 };
+      const { data: existingBins, error: fetchErr } = await this.client.from("warehouses").select("id");
+      if (fetchErr) throw fetchErr;
+      const existingIds = new Set((existingBins ?? []).map((r: Record<string, unknown>) => String(r.id)));
+
+      const toInsert = Array.from(incomingBins.values()).filter((b) => !existingIds.has(b.id));
+      const toDelete = Array.from(existingIds).filter((id) => !incomingBins.has(id));
 
       const chunkSize = 500;
-      for (let index = 0; index < bins.length; index += chunkSize) {
-        const chunk = bins.slice(index, index + chunkSize);
-        if (chunk.length === 0) continue;
-        const { error } = await this.client.from("warehouses").upsert(chunk, { onConflict: "id" });
-        if (error) throw error;
+      if (toInsert.length > 0) {
+        for (let i = 0; i < toInsert.length; i += chunkSize) {
+          const { error } = await this.client.from("warehouses").upsert(toInsert.slice(i, i + chunkSize), { onConflict: "id", ignoreDuplicates: true });
+          if (error) throw error;
+        }
       }
-      return { imported: bins.length };
+      if (toDelete.length > 0) {
+        for (let i = 0; i < toDelete.length; i += chunkSize) {
+          const { error } = await this.client.from("warehouses").delete().in("id", toDelete.slice(i, i + chunkSize));
+          if (error) throw error;
+        }
+      }
+      return { imported: toInsert.length };
     }
 
     if (payload.source === "users") {
-      const { data: existingPrivileged, error: existingError } = await this.client
+      // Fetch all existing users
+      const { data: existingRows, error: fetchError } = await this.client
         .from("users")
-        .select("id,role,email,name,display_name,department,company_name,job_title,country,account_enabled,initials")
-        .in("role", ["Admin", "Super Admin"]);
-      if (existingError) throw existingError;
+        .select("id,email,role,name,display_name,department,company_name,job_title,country,account_enabled,initials");
+      if (fetchError) throw fetchError;
 
-      const roleMapById = new Map<string, UserRoleRecord["role"]>();
-      const roleMapByEmail = new Map<string, UserRoleRecord["role"]>();
-      for (const row of existingPrivileged ?? []) {
-        const record = row as Record<string, unknown>;
-        const id = String(record.id);
-        const role = (record.role === "Admin" || record.role === "Super Admin" ? record.role : "User") as UserRoleRecord["role"];
-        roleMapById.set(id, role);
-
-        const normalizedEmail = record.email ? String(record.email).trim().toLowerCase() : "";
-        if (normalizedEmail) {
-          roleMapByEmail.set(normalizedEmail, role);
-        }
+      const existing = (existingRows ?? []) as Record<string, unknown>[];
+      const existingByEmail = new Map<string, Record<string, unknown>>();
+      const existingById = new Map<string, Record<string, unknown>>();
+      for (const row of existing) {
+        existingById.set(String(row.id), row);
+        const email = row.email ? String(row.email).trim().toLowerCase() : "";
+        if (email) existingByEmail.set(email, row);
       }
 
-      const mappedUsersById = new Map<string, Record<string, unknown>>();
+      // Parse and deduplicate incoming users
+      const incomingUsers: Record<string, unknown>[] = [];
       const seenEmails = new Set<string>();
+      const seenIds = new Set<string>();
 
-      payload.data.forEach((entry) => {
+      for (const entry of payload.data) {
         const row = entry as Record<string, unknown>;
         const id = String(row.id ?? randomUUID());
         const displayName = String(row.display_name ?? row.full_name ?? "").trim();
@@ -1425,11 +1537,11 @@ export class SupabaseStaRepository implements StaRepository {
         const initials = `${givenName.slice(0, 1)}${surname.slice(0, 1)}`.toUpperCase() || null;
         const rawEmail = row.email_address ? String(row.email_address) : row.email ? String(row.email) : "";
         const normalizedEmail = rawEmail.trim().toLowerCase();
-        if (normalizedEmail && seenEmails.has(normalizedEmail)) {
-          return;
-        }
 
-        mappedUsersById.set(id, {
+        if (seenIds.has(id)) continue;
+        if (normalizedEmail && seenEmails.has(normalizedEmail)) continue;
+
+        incomingUsers.push({
           id,
           name: displayName || fallbackName || String(row.name ?? ""),
           display_name: displayName || null,
@@ -1440,57 +1552,48 @@ export class SupabaseStaRepository implements StaRepository {
           country: row.country ? String(row.country) : null,
           account_enabled: typeof row.account_enabled === "boolean" ? row.account_enabled : true,
           initials,
-          role: roleMapById.get(id) ?? (normalizedEmail ? roleMapByEmail.get(normalizedEmail) : undefined) ?? "User"
+          role: "User"
         });
 
-        if (normalizedEmail) {
-          seenEmails.add(normalizedEmail);
-        }
+        seenIds.add(id);
+        if (normalizedEmail) seenEmails.add(normalizedEmail);
+      }
+
+      // Add users that don't exist yet
+      const toInsert = incomingUsers.filter((user) => {
+        const email = user.email ? String(user.email) : "";
+        return !existingById.has(String(user.id)) && !(email && existingByEmail.has(email));
       });
 
-      const mappedUsers = Array.from(mappedUsersById.values());
-      const importedIds = new Set(mappedUsers.map((row) => String(row.id)));
-      const importedEmails = new Set(
-        mappedUsers
-          .map((row) => (row.email ? String(row.email).trim().toLowerCase() : ""))
-          .filter((email) => email.length > 0)
-      );
-
-      for (const row of existingPrivileged ?? []) {
-        const record = row as Record<string, unknown>;
-        const id = String(record.id);
-        const normalizedEmail = record.email ? String(record.email).trim().toLowerCase() : "";
-        if (importedIds.has(id) || (normalizedEmail && importedEmails.has(normalizedEmail))) {
-          continue;
-        }
-
-        mappedUsers.push({
-          id,
-          name: String(record.name ?? record.display_name ?? ""),
-          display_name: record.display_name ? String(record.display_name) : null,
-          email: normalizedEmail || null,
-          department: record.department ? String(record.department) : null,
-          company_name: record.company_name ? String(record.company_name) : null,
-          job_title: record.job_title ? String(record.job_title) : null,
-          country: record.country ? String(record.country) : null,
-          account_enabled: record.account_enabled === undefined ? true : Boolean(record.account_enabled),
-          initials: record.initials ? String(record.initials) : null,
-          role: (record.role === "Admin" || record.role === "Super Admin" ? record.role : "User") as UserRoleRecord["role"]
-        });
-      }
-
-      const { error: deleteError } = await this.client.from("users").delete().neq("id", "");
-      if (deleteError) throw deleteError;
+      // Remove existing users not present in the import
+      const incomingIds = new Set(incomingUsers.map((u) => String(u.id)));
+      const incomingEmails = new Set(incomingUsers.map((u) => (u.email ? String(u.email) : "")).filter(Boolean));
+      const toDeleteIds = existing
+        .filter((row) => {
+          const email = row.email ? String(row.email).trim().toLowerCase() : "";
+          return !incomingIds.has(String(row.id)) && !(email && incomingEmails.has(email));
+        })
+        .map((row) => String(row.id));
 
       const chunkSize = 500;
-      for (let index = 0; index < mappedUsers.length; index += chunkSize) {
-        const chunk = mappedUsers.slice(index, index + chunkSize);
-        if (chunk.length === 0) continue;
-        const { error: insertError } = await this.client.from("users").insert(chunk);
-        if (insertError) throw insertError;
+
+      if (toInsert.length > 0) {
+        for (let index = 0; index < toInsert.length; index += chunkSize) {
+          const chunk = toInsert.slice(index, index + chunkSize);
+          const { error } = await this.client.from("users").insert(chunk);
+          if (error) throw error;
+        }
       }
 
-      return { imported: mappedUsers.length };
+      if (toDeleteIds.length > 0) {
+        for (let index = 0; index < toDeleteIds.length; index += chunkSize) {
+          const chunk = toDeleteIds.slice(index, index + chunkSize);
+          const { error } = await this.client.from("users").delete().in("id", chunk);
+          if (error) throw error;
+        }
+      }
+
+      return { imported: toInsert.length };
     }
 
     if (payload.source === "items") {
@@ -1539,13 +1642,16 @@ export class SupabaseStaRepository implements StaRepository {
       });
       const mappedItems = Array.from(mappedItemsById.values());
 
-      const { error: deleteItemsError } = await this.client.from("items").delete().eq("session_id", payload.sessionId);
-      if (deleteItemsError) throw deleteItemsError;
+      // Delete all existing items for the session, then insert fresh
+      const { error: deleteError } = await this.client
+        .from("items")
+        .delete()
+        .eq("session_id", payload.sessionId);
+      if (deleteError) throw deleteError;
 
       const chunkSize = 500;
       for (let index = 0; index < mappedItems.length; index += chunkSize) {
         const chunk = mappedItems.slice(index, index + chunkSize);
-        if (chunk.length === 0) continue;
         const { error } = await this.client.from("items").insert(chunk);
         if (error) throw error;
       }
@@ -1554,6 +1660,189 @@ export class SupabaseStaRepository implements StaRepository {
     }
 
     return { imported: 0 };
+  }
+
+  async findLinkedRecountSessions(parentSessionId: string): Promise<Session[]> {
+    const { data, error } = await this.client
+      .from("sessions")
+      .select(SESSION_SELECT)
+      .eq("parent_id", parentSessionId)
+      .eq("is_recount", true)
+      .or("is_deleted.eq.false,is_deleted.is.null");
+
+    if (error) throw error;
+    return (data ?? []).map((row) => toSession(row as Record<string, unknown>));
+  }
+
+  async autoAssignNewItemsToAdminPairs(parentSessionId: string, recountSessionId: string): Promise<number> {
+    return this.autoLoadItemsToRecountSession(parentSessionId, recountSessionId);
+  }
+
+  async autoLoadItemsToRecountSession(parentSessionId: string, recountSessionId: string): Promise<number> {
+    // --- Step 1: Get existing items in recount session to avoid duplicates (match by code+batch) ---
+    const { data: existingData, error: existingError } = await this.client
+      .from("items")
+      .select("code,batch")
+      .eq("session_id", recountSessionId);
+
+    if (existingError) throw existingError;
+    const existingKeys = new Set(
+      ((existingData ?? []) as Record<string, unknown>[]).map(
+        (row) => `${String(row.code ?? "").toLowerCase()}::${String(row.batch ?? "").toLowerCase()}`
+      )
+    );
+
+    // --- Step 2: Get qualifying items from parent session (paginated to bypass 1000-row limit) ---
+    const PAGE_SIZE = 1000;
+    const parentItems: Record<string, unknown>[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await this.client
+        .from("items")
+        .select("code,name,batch,uom,packaging_size,bin_location,wh_code,sap_qty,count_qty,new_item,submitted_by,remark,photos,group,category,expiry_date")
+        .eq("session_id", parentSessionId)
+        .eq("dropped", false)
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      parentItems.push(...(data as Record<string, unknown>[]));
+      if (data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+
+    // --- Step 3: Build rows — no assignment yet; store parent bin_location for later assignment step ---
+    const rows: Record<string, unknown>[] = [];
+    const ts = Date.now();
+
+    for (let i = 0; i < parentItems.length; i++) {
+      const item = parentItems[i];
+      const isNewItem = item.new_item === "Yes";
+      const countQty = parseNumber(item.count_qty, null);
+      const sapQty = parseNumber(item.sap_qty, 0) ?? 0;
+      const isVariance = !isNewItem && countQty !== null && countQty !== sapQty;
+      const isNotFound = !isNewItem && countQty === null;
+
+      if (!isNewItem && !isVariance && !isNotFound) continue;
+
+      const dedupeKey = `${String(item.code ?? "").toLowerCase()}::${String(item.batch ?? "").toLowerCase()}`;
+      if (existingKeys.has(dedupeKey)) continue;
+      existingKeys.add(dedupeKey);
+
+      rows.push({
+        id: `RC-${ts}-${Math.random().toString(36).slice(2, 7)}-${i}`,
+        session_id: recountSessionId,
+        code: String(item.code ?? ""),
+        name: String(item.name ?? ""),
+        group: item.group ? String(item.group) : null,
+        batch: item.batch ? String(item.batch) : null,
+        uom: item.uom ? String(item.uom) : null,
+        packaging_size: item.packaging_size ? String(item.packaging_size) : null,
+        expiry_date: item.expiry_date ? String(item.expiry_date) : null,
+        category: item.category ? String(item.category) : null,
+        // Store parent bin so autoAssignRecountItems can match pairs by bin
+        bin_location: item.bin_location ? String(item.bin_location) : null,
+        wh_code: item.wh_code ? String(item.wh_code) : isNewItem ? "New Item" : null,
+        new_item: isNewItem ? "Yes" : "No",
+        item_status: isVariance ? "Variance" : isNotFound ? "Not Found" : "Pending",
+        sap_qty: sapQty,
+        count_qty: null,
+        damaged_qty: null,
+        expired_qty: null,
+        dropped: false,
+        submitted_by: item.submitted_by ? String(item.submitted_by) : null,
+        remark: item.remark ? String(item.remark) : null,
+        photos: Array.isArray(item.photos) ? item.photos : [],
+        pair_id: null,
+        assigned_to: null
+      });
+    }
+
+    if (rows.length === 0) return 0;
+
+    // --- Step 4: Insert in chunks (no assignment — autoAssignRecountItems runs after) ---
+    const CHUNK = 500;
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const { error: insertError } = await this.client.from("items").insert(rows.slice(i, i + CHUNK));
+      if (insertError) throw insertError;
+    }
+
+    return rows.length;
+  }
+
+  async autoAssignRecountItems(recountSessionId: string): Promise<void> {
+    // Load pairs for this recount session
+    const { data: pairsData, error: pairsError } = await this.client
+      .from("pairs")
+      .select("id,warehouse_id,role")
+      .eq("session_id", recountSessionId);
+
+    if (pairsError) throw pairsError;
+    const pairs = (pairsData ?? []) as Array<{ id: string; warehouse_id: string; role: string }>;
+    if (pairs.length === 0) return;
+
+    // Load unassigned items in recount session
+    // item_status="Variance" = variance from parent; new_item="Yes" = new item; else = not found
+    const { data: itemsData, error: itemsError } = await this.client
+      .from("items")
+      .select("id,bin_location,new_item,item_status")
+      .eq("session_id", recountSessionId)
+      .is("pair_id", null);
+
+    if (itemsError) throw itemsError;
+    const items = (itemsData ?? []) as Record<string, unknown>[];
+    if (items.length === 0) return;
+
+    // Helper: find a pair matching a bin location (item bin_location may be semicolon-separated)
+    // roleFilter: "Admin" = admin pairs only, "User" = non-admin pairs only, null = any pair
+    const findPairByBin = (binLocation: string | null, roleFilter: "Admin" | "User" | null): { id: string } | null => {
+      if (!binLocation) return null;
+      const itemBins = binLocation.split(";").map((b) => b.trim().toLowerCase()).filter(Boolean);
+      for (const pair of pairs) {
+        if (roleFilter === "Admin" && pair.role !== "Admin") continue;
+        if (roleFilter === "User" && pair.role === "Admin") continue;
+        const pairBins = String(pair.warehouse_id ?? "")
+          .split(",")
+          .map((b) => b.trim().toLowerCase())
+          .filter(Boolean);
+        if (itemBins.some((b) => pairBins.includes(b))) return pair;
+      }
+      return null;
+    };
+
+    // Build a map: pairId → item ids to assign
+    const assignments = new Map<string, string[]>();
+
+    for (const item of items) {
+      const isNewItem = item.new_item === "Yes";
+      const isVariance = item.item_status === "Variance";
+      const binLocation = item.bin_location ? String(item.bin_location) : null;
+
+      let pairId: string | null = null;
+      if (isNewItem) {
+        // New item → first Admin pair (no bin matching required)
+        pairId = pairs.find((p) => p.role === "Admin")?.id ?? null;
+      } else if (isVariance) {
+        // Variance → user (non-admin) pair matching bin
+        pairId = findPairByBin(binLocation, "User")?.id ?? null;
+      }
+      // Not found → no assignment
+
+      if (pairId !== null) {
+        const list = assignments.get(pairId) ?? [];
+        list.push(String(item.id));
+        assignments.set(pairId, list);
+      }
+    }
+
+    // Batch update per pair
+    for (const [pairId, itemIds] of assignments) {
+      const { error } = await this.client
+        .from("items")
+        .update({ pair_id: pairId, assigned_to: pairId })
+        .in("id", itemIds);
+      if (error) throw error;
+    }
   }
 }
 

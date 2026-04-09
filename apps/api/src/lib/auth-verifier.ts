@@ -16,20 +16,7 @@ export function createSupabaseAuthVerifier(client: SupabaseClient): AuthVerifier
         return null;
       }
 
-      let role = normalizeRole(data.user.app_metadata?.role ?? data.user.user_metadata?.role);
-      const email = data.user.email?.toLowerCase() ?? "";
-      if (email) {
-        const { data: userRow } = await client
-          .from("users")
-          .select("role")
-          .ilike("email", email)
-          .limit(1)
-          .maybeSingle();
-
-        if (userRow) {
-          role = normalizeRole((userRow as { role?: unknown }).role);
-        }
-      }
+      const role = normalizeRole(data.user.app_metadata?.role);
 
       return {
         id: data.user.id,

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useUpdateUserRoleMutation, useUsersQuery } from "../../hooks/useAdminData";
 import { useIdentity } from "../../app/IdentityContext";
 import type { UserRoleRecord } from "../../types/domain";
+import { BannerModal } from "../ui/BannerModal";
 
 interface UsersRolesModalProps {
   open: boolean;
@@ -12,9 +13,25 @@ const roleOptions: UserRoleRecord["role"][] = ["User", "Admin", "Super Admin"];
 
 export function UsersRolesModal({ open, onClose }: UsersRolesModalProps) {
   const { identity } = useIdentity();
-  const { data: users = [], isLoading } = useUsersQuery();
+  const usersQuery = useUsersQuery();
+  const { data: users = [], isLoading } = usersQuery;
   const updateRole = useUpdateUserRoleMutation();
   const [search, setSearch] = useState("");
+  const [syncingUserId, setSyncingUserId] = useState<string | null>(null);
+  const [roleFeedback, setRoleFeedback] = useState<{ type: "success" | "warning"; text: string } | null>(null);
+
+  const handleRoleChange = async (userId: string, role: UserRoleRecord["role"]) => {
+    setSyncingUserId(userId);
+    try {
+      await updateRole.mutateAsync({ userId, role });
+      await usersQuery.refetch();
+      setRoleFeedback({ type: "success", text: "Role updated successfully." });
+    } catch (error) {
+      setRoleFeedback({ type: "warning", text: (error as Error).message || "Failed to update role." });
+    } finally {
+      setSyncingUserId(null);
+    }
+  };
 
   if (!open) return null;
 
@@ -40,6 +57,13 @@ export function UsersRolesModal({ open, onClose }: UsersRolesModalProps) {
             style={{ width: "100%", boxSizing: "border-box" }}
           />
         </div>
+        {roleFeedback ? (
+          <BannerModal
+            type={roleFeedback.type}
+            message={roleFeedback.text}
+            onClose={() => setRoleFeedback(null)}
+          />
+        ) : null}
         {isLoading ? <p>Loading users...</p> : null}
         <table className="legacy-table">
           <thead>
@@ -51,31 +75,30 @@ export function UsersRolesModal({ open, onClose }: UsersRolesModalProps) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((user) => (
-              <tr key={user.id}>
-                <td>{user.name}</td>
-                <td>{user.email ?? "-"}</td>
-                <td>
-                  <select
-                    value={user.role}
-                    disabled={identity?.role !== "Super Admin" || updateRole.isPending}
-                    onChange={(event) =>
-                      updateRole.mutate({
-                        userId: user.id,
-                        role: event.target.value as UserRoleRecord["role"]
-                      })
-                    }
-                  >
-                    {roleOptions.map((role) => (
-                      <option key={role} value={role}>
-                        {role}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>{user.accountEnabled === false ? "Disabled" : "Active"}</td>
-              </tr>
-            ))}
+            {filtered.map((user) => {
+              const isSyncing = syncingUserId === user.id;
+              return (
+                <tr key={user.id}>
+                  <td>{user.name}</td>
+                  <td>{user.email ?? "-"}</td>
+                  <td style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <select
+                      value={user.role}
+                      disabled={identity?.role !== "Super Admin" || isSyncing}
+                      onChange={(event) => void handleRoleChange(user.id, event.target.value as UserRoleRecord["role"])}
+                    >
+                      {roleOptions.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+                    {isSyncing ? <span className="muted" style={{ fontSize: 11 }}>Syncing…</span> : null}
+                  </td>
+                  <td>{user.accountEnabled === false ? "Disabled" : "Active"}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {identity?.role !== "Super Admin" ? (

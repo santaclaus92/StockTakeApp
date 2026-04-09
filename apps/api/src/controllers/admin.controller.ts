@@ -7,6 +7,7 @@ import type {
   AttendanceScanBody,
   AttendanceUpsertBody,
   AuditInsertBody,
+  CreateAdjustmentBody,
   CreatePairBody,
   CreateSessionBody,
   ImportFromPaBody,
@@ -37,6 +38,7 @@ function normalizePersonName(value: string): string {
 }
 
 function parseImportRows(payload: unknown): Record<string, unknown>[] {
+  console.log("[parseImportRows] type:", typeof payload, "| isArray:", Array.isArray(payload), "| keys:", payload && typeof payload === "object" ? Object.keys(payload as object).join(",") : "n/a", "| raw:", JSON.stringify(payload)?.slice(0, 300));
   if (Array.isArray(payload)) {
     return payload as Record<string, unknown>[];
   }
@@ -46,7 +48,7 @@ function parseImportRows(payload: unknown): Record<string, unknown>[] {
   }
 
   const record = payload as Record<string, unknown>;
-  const candidates = [record.items, record.data, record.rows, record.results];
+  const candidates = [record.body, record.value, record.items, record.data, record.rows, record.results];
   for (const candidate of candidates) {
     if (Array.isArray(candidate)) {
       return candidate as Record<string, unknown>[];
@@ -165,21 +167,29 @@ async function fetchUpstreamImportRows(
   body: Record<string, unknown>,
   sourceLabel: string
 ): Promise<unknown> {
+  console.log(`[fetchUpstream:${sourceLabel}] POST ${upstreamUrl} body:`, JSON.stringify(body));
+  // PA URLs use SAS auth (sig= in query string) — only send Content-Type, no Authorization header
+  const isPowerAutomateUrl = upstreamUrl.includes("powerplatform.com") || upstreamUrl.includes("logic.azure.com");
+  const headers = isPowerAutomateUrl ? { "Content-Type": "application/json" } : buildApiHeaders();
   const upstreamResponse = await fetch(upstreamUrl, {
     method: "POST",
-    headers: buildApiHeaders(),
+    headers,
     body: JSON.stringify(body)
   });
 
+  console.log(`[fetchUpstream:${sourceLabel}] status:`, upstreamResponse.status);
   if (!upstreamResponse.ok) {
     const failureBody = await upstreamResponse.text();
+    console.log(`[fetchUpstream:${sourceLabel}] error body:`, failureBody.slice(0, 300));
     throw new HttpError(
       502,
       `${sourceLabel} upstream import failed (${upstreamResponse.status})${failureBody ? `: ${failureBody.slice(0, 200)}` : ""}`
     );
   }
 
-  return (await upstreamResponse.json().catch(() => null)) as unknown;
+  const text = await upstreamResponse.text();
+  console.log(`[fetchUpstream:${sourceLabel}] raw response:`, text.slice(0, 300));
+  return JSON.parse(text) as unknown;
 }
 
 interface PagedImportFetchOptions {
@@ -299,6 +309,12 @@ export class AdminController {
     const sessionId = toSingleString(request.params.sessionId, "sessionId");
     const session = await this.service.endSession(sessionId);
     response.json(session);
+  };
+
+  loadRecountItems = async (request: Request, response: Response) => {
+    const sessionId = toSingleString(request.params.sessionId, "sessionId");
+    const result = await this.service.loadRecountItems(sessionId);
+    response.json(result);
   };
 
   toggleSessionVisibility = async (request: Request, response: Response) => {
@@ -617,6 +633,41 @@ export class AdminController {
   approve = async (request: Request, response: Response) => this.reviewApproval(request, response, "Approved");
 
   reject = async (request: Request, response: Response) => this.reviewApproval(request, response, "Rejected");
+
+  createAdjustment = async (request: Request, response: Response) => {
+    const body = request.body as CreateAdjustmentBody;
+    const authEmail = request.authUser?.email?.trim().toLowerCase();
+    let submittedBy = body.submittedBy.trim();
+    if (authEmail) {
+      const directoryUser = await this.service.findUserByEmail(authEmail);
+      if (directoryUser?.name?.trim()) {
+        submittedBy = directoryUser.name.trim();
+      }
+    }
+    const row = await this.service.createAdjustment({ ...body, submittedBy });
+    response.status(201).json(row);
+  };
+
+  listAdjustments = async (request: Request, response: Response) => {
+    const sessionIdRaw = request.query.sessionId;
+    const sessionId = typeof sessionIdRaw === "string" ? sessionIdRaw : undefined;
+    const role = request.authUser?.role ?? "User";
+
+    if (role === "User") {
+      const authEmail = request.authUser?.email?.trim().toLowerCase();
+      if (!authEmail) { response.json([]); return; }
+      const signedInUser = await this.service.findUserByEmail(authEmail);
+      if (!signedInUser || signedInUser.accountEnabled === false) { response.json([]); return; }
+      const selfName = signedInUser.name?.trim();
+      if (!selfName) { response.json([]); return; }
+      const rows = await this.service.listAdjustments({ submittedBy: selfName, sessionId });
+      response.json(rows);
+      return;
+    }
+
+    const rows = await this.service.listAdjustments({ sessionId });
+    response.json(rows);
+  };
 
   listCountHistory = async (request: Request, response: Response) => {
     const submittedByRaw = request.query.submittedBy;

@@ -119,6 +119,20 @@ export function TvDashboardOverlay({ open, sessionName, sessionId, onClose }: Tv
 
   const attendeeByName = new Map(attendees.map((row) => [normalizeName(row.name), row]));
 
+  const pairedNameSet = new Set(
+    (pairs.data ?? []).flatMap((pair) =>
+      [pair.counter, pair.checker, pair.counter2].filter((name): name is string => typeof name === "string" && name.trim().length > 0).map(normalizeName)
+    )
+  );
+
+  const unpairedAttendees = attendees
+    .filter((row) => !pairedNameSet.has(normalizeName(row.name)))
+    .sort((a, b) => {
+      const ta = toLatestAttendanceTimestamp(a);
+      const tb = toLatestAttendanceTimestamp(b);
+      return tb - ta || a.name.localeCompare(b.name);
+    });
+
   const sortedPairs = (pairs.data ?? [])
     .map((pair, index) => {
       const members = [pair.counter, pair.checker, pair.counter2]
@@ -336,29 +350,49 @@ export function TvDashboardOverlay({ open, sessionName, sessionId, onClose }: Tv
                 </span>
               </div>
               <div className="tv-att-list">
-                {sortedPairs.length === 0 ? (
+                {sortedPairs.length === 0 && unpairedAttendees.length === 0 ? (
                   <div className="tv-att-empty">No pair attendance yet</div>
                 ) : (
-                  sortedPairs.map((pair) => (
-                    <article key={pair.id} className="tv-pair-card">
-                      <div className="tv-pair-members">
-                        {pair.members.map((member) => (
-                          <div key={`${pair.id}-${member.name}`} className="tv-member-line">
+                  <>
+                    {sortedPairs.map((pair) => (
+                      <article key={pair.id} className="tv-pair-card">
+                        <div className="tv-pair-members">
+                          {pair.members.map((member) => (
+                            <div key={`${pair.id}-${member.name}`} className="tv-member-line">
+                              <span
+                                className={`tv-member-dot ${member.attendee?.attended ? "present" : "absent"}`}
+                                aria-hidden="true"
+                              />
+                              <span className="tv-member-name">{member.name}</span>
+                              <div className="tv-timing-pills">
+                                {getAttendanceTimes(member.attendee).map((time, i) => (
+                                  <span key={i} className="tv-timing-pill">{time}</span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </article>
+                    ))}
+                    {unpairedAttendees.map((attendee) => (
+                      <article key={attendee.userId} className="tv-pair-card">
+                        <div className="tv-pair-members">
+                          <div className="tv-member-line">
                             <span
-                              className={`tv-member-dot ${member.attendee?.attended ? "present" : "absent"}`}
+                              className={`tv-member-dot ${attendee.attended ? "present" : "absent"}`}
                               aria-hidden="true"
                             />
-                            <span className="tv-member-name">{member.name}</span>
+                            <span className="tv-member-name">{attendee.name}</span>
                             <div className="tv-timing-pills">
-                              {getAttendanceTimes(member.attendee).map((time, i) => (
+                              {getAttendanceTimes(attendee).map((time, i) => (
                                 <span key={i} className="tv-timing-pill">{time}</span>
                               ))}
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    </article>
-                  ))
+                        </div>
+                      </article>
+                    ))}
+                  </>
                 )}
               </div>
             </section>

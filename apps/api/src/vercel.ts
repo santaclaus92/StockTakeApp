@@ -10,18 +10,34 @@ loadStartupEnv();
 const env = getEnv();
 
 const useSupabase = env.DATA_SOURCE === "supabase";
+
+if (useSupabase && (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY)) {
+  throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required when DATA_SOURCE=supabase.");
+}
+
 const supabaseClient = useSupabase ? createSupabaseAdminClient(env) : null;
 const repository = supabaseClient ? createSupabaseStaRepository(supabaseClient) : createInMemoryStaRepository();
 const authVerifier = supabaseClient ? createSupabaseAuthVerifier(supabaseClient) : { verifyToken: async () => null };
 const authMetadataSync = supabaseClient
   ? {
       syncRole: async (userId: string, role: "User" | "Admin" | "Super Admin") => {
-        const currentUser = await supabaseClient.auth.admin.getUserById(userId);
-        const currentMetadata = currentUser.data.user?.app_metadata ?? {};
-        const { error } = await supabaseClient.auth.admin.updateUserById(userId, {
-          app_metadata: { ...currentMetadata, role }
-        });
-        if (error) throw error;
+        try {
+          const currentUser = await supabaseClient.auth.admin.getUserById(userId);
+          if (!currentUser.data.user) {
+            // User does not exist in authentication table — skip auth metadata update
+            return;
+          }
+          const currentMetadata = currentUser.data.user.app_metadata ?? {};
+          const { error } = await supabaseClient.auth.admin.updateUserById(userId, {
+            app_metadata: { ...currentMetadata, role }
+          });
+          if (error) {
+            console.warn(`[syncRole] Failed to update auth metadata for ${userId}:`, error.message);
+          }
+        } catch (err) {
+          // Never throw — users table was already updated; auth metadata sync is best-effort
+          console.warn(`[syncRole] Unexpected error for ${userId}:`, err instanceof Error ? err.message : String(err));
+        }
       }
     }
   : undefined;

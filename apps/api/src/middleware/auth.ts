@@ -21,7 +21,10 @@ interface AuthOptions {
 
 export function createAuthMiddleware(verifier: AuthVerifier, options: AuthOptions): RequestHandler {
   return async (request, _response, next) => {
-    if (options.publicPaths?.includes(request.path)) {
+    const isPublic = options.publicPaths?.some(
+      (p) => request.path === p || request.path.startsWith(p + "/")
+    );
+    if (isPublic) {
       next();
       return;
     }

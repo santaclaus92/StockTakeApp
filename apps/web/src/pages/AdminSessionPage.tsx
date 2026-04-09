@@ -12,6 +12,7 @@ import { StockCountTab } from "../components/admin/tabs/StockCountTab";
 import {
   useApprovalsQuery,
   useEndSessionMutation,
+  useLoadRecountItemsMutation,
   useSessionQuery,
   useSessionsQuery,
   useToggleSessionVisibilityMutation,
@@ -36,6 +37,7 @@ export function AdminSessionPage() {
   const { data: sessions = [] } = useSessionsQuery();
   const { data: approvals = [] } = useApprovalsQuery(sessionId);
   const endSession = useEndSessionMutation();
+  const loadRecountItems = useLoadRecountItemsMutation();
   const toggleVisibility = useToggleSessionVisibilityMutation();
   const toggleStrictRoles = useToggleStrictRolesMutation();
   const pendingApprovalsCount = approvals.filter((entry) => entry.status === "Pending").length;
@@ -109,9 +111,19 @@ export function AdminSessionPage() {
     }
   };
 
+  const handleLoadRecountItems = async () => {
+    try {
+      const result = await loadRecountItems.mutateAsync(session.id);
+      window.alert(`Loaded ${result.loaded} item(s) into recount session.`);
+    } catch (error) {
+      window.alert((error as Error).message);
+    }
+  };
+
   const parentSessionName =
     session?.isRecount && session.parentId ? sessions.find((entry) => entry.id === session.parentId)?.name ?? session.parentId : null;
-  const linkedRecountName = session?.isRecount ? null : sessions.find((entry) => entry.isRecount && entry.parentId === session?.id)?.name ?? null;
+  const linkedRecountSession = session?.isRecount ? null : sessions.find((entry) => entry.isRecount && entry.parentId === session?.id) ?? null;
+  const linkedRecountName = linkedRecountSession?.name ?? null;
 
   return (
     <section className="session-page">
@@ -119,11 +131,14 @@ export function AdminSessionPage() {
         session={session}
         visibilityUpdating={toggleVisibility.isPending}
         endingSession={endSession.isPending}
+        loadingRecountItems={loadRecountItems.isPending}
+        hasLinkedRecount={linkedRecountSession !== null}
         parentSessionName={parentSessionName}
         linkedRecountName={linkedRecountName}
         onToggleVisibility={handleToggleVisibility}
         onOpenDashboard={handleOpenDashboard}
         onEndSession={handleEndSession}
+        onLoadRecountItems={handleLoadRecountItems}
       />
       <div className="stab-bar">
         {TAB_CONFIG.map((tab) => (

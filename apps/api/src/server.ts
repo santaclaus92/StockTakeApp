@@ -21,8 +21,13 @@ const authVerifier = supabaseClient ? createSupabaseAuthVerifier(supabaseClient)
 const authMetadataSync = supabaseClient
   ? {
       syncRole: async (userId: string, role: "User" | "Admin" | "Super Admin") => {
-        const currentUser = await supabaseClient.auth.admin.getUserById(userId);
-        const currentMetadata = currentUser.data.user?.app_metadata ?? {};
+        const { data: currentUser, error: fetchError } = await supabaseClient.auth.admin.getUserById(userId);
+        if (fetchError || !currentUser.user) {
+          // User exists in DB but not in Supabase Auth (e.g. imported manually) — skip metadata sync
+          console.warn(`syncRole: auth user not found for id=${userId}, skipping app_metadata update`);
+          return;
+        }
+        const currentMetadata = currentUser.user.app_metadata ?? {};
         const { error } = await supabaseClient.auth.admin.updateUserById(userId, {
           app_metadata: {
             ...currentMetadata,

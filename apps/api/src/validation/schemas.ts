@@ -180,6 +180,15 @@ export const approvalActionSchema = z.object({
   reviewedBy: z.string().trim().min(1)
 });
 
+export const createAdjustmentSchema = z.object({
+  sessionId: z.string().trim().min(1),
+  itemId: z.string().trim().min(1),
+  newQty: z.number().int().nonnegative(),
+  newBinLocation: z.string().trim().optional(),
+  submittedBy: z.string().trim().min(1),
+  remark: z.string().trim().optional()
+});
+
 export const warehouseSearchSchema = z.object({
   query: z.string().default(""),
   sessionId: z.string().trim().optional()
@@ -206,19 +215,42 @@ export const userRoleUpdateSchema = z.object({
   role: fullRoleSchema
 });
 
-export const webhookImportBinsSchema = z.object({
-  data: z.array(z.record(z.string(), z.unknown()))
-});
+// Normalises a webhook body that may arrive as { data }, { value }, { rows },
+// a raw array, or other common Power Automate output shapes.
+function normaliseWebhookBody(body: unknown): Record<string, unknown> {
+  if (Array.isArray(body)) return { data: body };
+  if (body && typeof body === "object") {
+    const b = body as Record<string, unknown>;
+    if (Array.isArray(b.data)) return { ...b, data: b.data };
+    if (Array.isArray(b.value)) return { ...b, data: b.value };
+    if (Array.isArray(b.body)) return { ...b, data: b.body };
+    if (Array.isArray(b.rows)) return { ...b, data: b.rows };
+    if (Array.isArray(b.items)) return { ...b, data: b.items };
+    return { ...b, data: [] };
+  }
+  return { data: [] };
+}
 
-export const webhookImportUsersSchema = z.object({
-  data: z.array(z.record(z.string(), z.unknown()))
-});
+const rowsArray = z.array(z.record(z.string(), z.unknown()));
 
-export const webhookImportItemsSchema = z.object({
-  sessionId: z.string().trim().min(1),
-  entity: z.string().trim().optional(),
-  data: z.array(z.record(z.string(), z.unknown()))
-});
+export const webhookImportBinsSchema = z.preprocess(
+  normaliseWebhookBody,
+  z.object({ data: rowsArray })
+);
+
+export const webhookImportUsersSchema = z.preprocess(
+  normaliseWebhookBody,
+  z.object({ data: rowsArray })
+);
+
+export const webhookImportItemsSchema = z.preprocess(
+  normaliseWebhookBody,
+  z.object({
+    sessionId: z.string().trim().min(1).optional(),
+    entity: z.string().trim().optional(),
+    data: rowsArray
+  })
+);
 
 export type CreateSessionBody = z.infer<typeof createSessionSchema>;
 export type AuthPrecheckBody = z.infer<typeof authPrecheckSchema>;
@@ -238,6 +270,7 @@ export type ImportFromSapBody = z.infer<typeof importFromSapSchema>;
 export type ImportFromPaBody = z.infer<typeof importFromPaSchema>;
 export type ImportUsersFromPaBody = z.infer<typeof importUsersFromPaSchema>;
 export type ApprovalActionBody = z.infer<typeof approvalActionSchema>;
+export type CreateAdjustmentBody = z.infer<typeof createAdjustmentSchema>;
 export type CountSubmissionBody = z.infer<typeof countSubmissionSchema>;
 export type SessionDeleteBody = z.infer<typeof sessionDeleteSchema>;
 export type UserRoleUpdateBody = z.infer<typeof userRoleUpdateSchema>;

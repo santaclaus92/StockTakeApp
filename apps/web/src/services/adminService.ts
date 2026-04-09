@@ -8,6 +8,7 @@ import type {
   AuditEntry,
   BulkAssignInput,
   CountHistoryEntry,
+  CreateAdjustmentInput,
   DashboardDetails,
   DashboardSummary,
   ImportRowsResult,
@@ -46,6 +47,10 @@ export const adminService = {
   endSession(sessionId: string): Promise<Session | null> {
     if (useMockServices) return mockStore.endSession(sessionId);
     return apiClient.post<Session>(`/sessions/${sessionId}/end`, {});
+  },
+
+  loadRecountItems(sessionId: string): Promise<{ loaded: number }> {
+    return apiClient.post<{ loaded: number }>(`/sessions/${sessionId}/load-recount-items`, {});
   },
 
   toggleSessionVisibility(sessionId: string): Promise<Session | null> {
@@ -204,6 +209,20 @@ export const adminService = {
     return apiClient.post<ApprovalRecord>(`/sessions/${sessionId}/approvals/${approvalId}/${actionPath}`, {});
   },
 
+  createAdjustment(input: CreateAdjustmentInput): Promise<ApprovalRecord> {
+    if (useMockServices) return Promise.reject(new Error("Not supported in mock mode"));
+    return apiClient.post<ApprovalRecord>("/adjustments", input);
+  },
+
+  listMyAdjustments(filters?: { sessionId?: string; submittedBy?: string }): Promise<ApprovalRecord[]> {
+    if (useMockServices) return Promise.resolve([]);
+    const params = new URLSearchParams();
+    if (filters?.sessionId) params.set("sessionId", filters.sessionId);
+    if (filters?.submittedBy) params.set("submittedBy", filters.submittedBy);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return apiClient.get<ApprovalRecord[]>(`/adjustments${query}`);
+  },
+
   listCountHistory(filters?: { submittedBy?: string; sessionId?: string }): Promise<CountHistoryEntry[]> {
     if (useMockServices) return mockStore.listCountHistory(filters?.submittedBy, filters?.sessionId);
     const params = new URLSearchParams();
@@ -218,21 +237,8 @@ export const adminService = {
     return apiClient.get<UserRoleRecord[]>("/users");
   },
 
-  async updateUserRole(userId: string, role: UserRoleRecord["role"]): Promise<UserRoleRecord | null> {
+  updateUserRole(userId: string, role: UserRoleRecord["role"]): Promise<UserRoleRecord> {
     if (useMockServices) return mockStore.updateUserRole(userId, role);
-    const supabase = getSupabaseAuthClient();
-    if (supabase) {
-      const { data, error } = await supabase
-        .from("users")
-        .update({ role })
-        .eq("id", userId)
-        .select()
-        .single();
-      if (!error && data) {
-        return data as UserRoleRecord;
-      }
-      console.warn("Direct Supabase role update failed, falling back to API client", error);
-    }
     return apiClient.patch<UserRoleRecord>(`/users/${userId}/role`, { role });
   },
 

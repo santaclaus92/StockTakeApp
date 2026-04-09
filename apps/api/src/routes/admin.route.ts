@@ -11,6 +11,7 @@ import {
   attendanceScanSchema,
   attendanceUpsertSchema,
   auditInsertSchema,
+  createAdjustmentSchema,
   createPairSchema,
   createSessionSchema,
   historyQuerySchema,
@@ -86,6 +87,12 @@ export function createAdminRouter(controller: AdminController): Router {
     requireRole("Admin", "Super Admin"),
     validateParams(sessionIdParamSchema),
     asyncHandler(controller.endSession)
+  );
+  router.post(
+    "/sessions/:sessionId/load-recount-items",
+    requireRole("Admin", "Super Admin"),
+    validateParams(sessionIdParamSchema),
+    asyncHandler(controller.loadRecountItems)
   );
   router.post(
     "/sessions/:sessionId/toggle-visibility",
@@ -351,6 +358,18 @@ export function createAdminRouter(controller: AdminController): Router {
       });
       response.json(row);
     })
+  );
+
+  router.post(
+    "/adjustments",
+    requireRole("Admin", "Super Admin", "User"),
+    validateBody(createAdjustmentSchema),
+    asyncHandler(controller.createAdjustment)
+  );
+  router.get(
+    "/adjustments",
+    requireRole("Admin", "Super Admin", "User"),
+    asyncHandler(controller.listAdjustments)
   );
 
   router.get(

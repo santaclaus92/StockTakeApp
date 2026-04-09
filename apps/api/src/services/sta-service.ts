@@ -74,7 +74,35 @@ export class StaService {
     if (!updated) {
       throw new HttpError(404, "Session not found");
     }
+
+    // Load new items, variance, and not-found items into any linked recount session, then assign pairs
+    if (!updated.isRecount) {
+      try {
+        const recountSessions = await this.repository.findLinkedRecountSessions(sessionId);
+        for (const recount of recountSessions) {
+          await this.repository.autoLoadItemsToRecountSession(sessionId, recount.id);
+          await this.repository.autoAssignRecountItems(recount.id);
+        }
+      } catch (err) {
+        // Non-fatal: auto-load failure should not block session end
+        console.error("[endSession] recount item load/assign failed:", err);
+      }
+    }
+
     return updated;
+  }
+
+  async loadRecountItems(parentSessionId: string): Promise<{ loaded: number }> {
+    const recountSessions = await this.repository.findLinkedRecountSessions(parentSessionId);
+    if (recountSessions.length === 0) {
+      throw new HttpError(404, "No linked recount session found for this session");
+    }
+    let total = 0;
+    for (const recount of recountSessions) {
+      total += await this.repository.autoLoadItemsToRecountSession(parentSessionId, recount.id);
+      await this.repository.autoAssignRecountItems(recount.id);
+    }
+    return { loaded: total };
   }
 
   async toggleSessionVisibility(sessionId: string) {
@@ -321,6 +349,14 @@ export class StaService {
 
   listApprovals(sessionId: string) {
     return this.repository.listApprovals(sessionId);
+  }
+
+  createAdjustment(input: import("../domain/types").CreateAdjustmentInput) {
+    return this.repository.createAdjustment(input);
+  }
+
+  listAdjustments(filters: { submittedBy?: string; sessionId?: string }) {
+    return this.repository.listAdjustments(filters);
   }
 
   async reviewApproval(input: ApprovalActionInput) {

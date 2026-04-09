@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { WarehouseItem } from "../../types/domain";
 import { QuantityField } from "../ui/QuantityField";
+import { uploadPhoto } from "../../services/photoUpload";
+import { CameraScanner } from "./CameraScanner";
 
 interface CountInputFormProps {
   items: WarehouseItem[];
@@ -8,6 +10,7 @@ interface CountInputFormProps {
   onBack?: () => void;
   initialSubmittedBy?: string;
   isRecount?: boolean;
+  firstCountQty?: number | null;
   binOptions?: string[];
   onSubmit: (input: {
     itemId: string;
@@ -27,6 +30,7 @@ export function CountInputForm({
   onBack,
   initialSubmittedBy = "Counter",
   isRecount = false,
+  firstCountQty = null,
   binOptions = [],
   onSubmit
 }: CountInputFormProps) {
@@ -47,6 +51,7 @@ export function CountInputForm({
   const [binQtys, setBinQtys] = useState<Record<string, number | null>>({});
   const [binSearch, setBinSearch] = useState("");
   const [binDropdownOpen, setBinDropdownOpen] = useState(false);
+  const [binScanOpen, setBinScanOpen] = useState(false);
   const binRef = useRef<HTMLDivElement>(null);
 
   // SAP mismatch
@@ -92,16 +97,16 @@ export function CountInputForm({
     [binQtys]
   );
 
-  const handlePhotoCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      setPhotos((prev) => [...prev, dataUrl]);
-    };
-    reader.readAsDataURL(file);
     if (photoInputRef.current) photoInputRef.current.value = "";
+    try {
+      const url = await uploadPhoto(file);
+      setPhotos((prev) => [...prev, url]);
+    } catch (err) {
+      setMessage((err as Error).message || "Failed to upload photo.");
+    }
   };
 
   const toggleBin = (bin: string) => {
@@ -159,7 +164,7 @@ export function CountInputForm({
     if (!pendingConfirm && activeItem && finalQty !== activeItem.sapQty) {
       setSapMismatch(true);
       setPendingConfirm(true);
-      setMessage(`Quantity doesn't match SAP Qty (${activeItem.sapQty}).`);
+      setMessage("Quantity doesn't match. Please confirm to proceed.");
       return;
     }
 
@@ -215,12 +220,14 @@ export function CountInputForm({
                 <div className="cv-chip-val">{activeItem.sapQty}</div>
               </div>
               <div className="cv-chip">
-                <div className="cv-chip-lbl">Last Count</div>
-                <div className="cv-chip-val">{activeItem.countQty ?? "Pending"}</div>
+                <div className="cv-chip-lbl">1st Count Qty</div>
+                <div className="cv-chip-val">
+                  {firstCountQty !== null && firstCountQty !== undefined ? firstCountQty : "-"}
+                </div>
               </div>
               <div className="cv-chip">
-                <div className="cv-chip-lbl">Assigned To</div>
-                <div className="cv-chip-val">{activeItem.assignedTo || "-"}</div>
+                <div className="cv-chip-lbl">Bin Location</div>
+                <div className="cv-chip-val">{activeItem.warehouse || "-"}</div>
               </div>
             </div>
           ) : null}
@@ -260,7 +267,7 @@ export function CountInputForm({
                   ))}
                 </div>
               ) : null}
-              {/* Search input + chevron */}
+              {/* Search input + chevron + barcode scan */}
               <div className="cv-bin-input-row">
                 <input
                   className="cv-bin-search-input"
@@ -273,7 +280,19 @@ export function CountInputForm({
                 />
                 <button
                   type="button"
+                  className="cv-bin-scan-btn"
+                  title="Scan bin barcode"
+                  onMouseDown={(e) => { e.preventDefault(); setBinScanOpen(true); }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="3" y="3" width="4" height="4" rx="0.5" /><rect x="17" y="3" width="4" height="4" rx="0.5" /><rect x="3" y="17" width="4" height="4" rx="0.5" />
+                    <line x1="7" y1="5" x2="17" y2="5" /><line x1="7" y1="19" x2="12" y2="19" /><line x1="19" y1="7" x2="19" y2="17" /><line x1="5" y1="7" x2="5" y2="17" /><line x1="12" y1="12" x2="12" y2="19" /><line x1="12" y1="12" x2="19" y2="12" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
                   className="cv-bin-chevron"
+                  style={{ display: "none" }}
                   onMouseDown={(e) => { e.preventDefault(); setBinDropdownOpen((v) => !v); }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: binDropdownOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
@@ -315,6 +334,7 @@ export function CountInputForm({
                     <QuantityField
                       value={binQtys[b] ?? null}
                       onChange={(v) => setBinQtys((prev) => ({ ...prev, [b]: v }))}
+                      hideButtons
                     />
                   </div>
                 ))}
@@ -327,18 +347,18 @@ export function CountInputForm({
           {selectedBins.length <= 1 ? (
             <div>
               <span className="cv-field-label">Count Qty</span>
-              <QuantityField value={qty} onChange={handleQtyChange} />
+              <QuantityField value={qty} onChange={handleQtyChange} hideButtons />
             </div>
           ) : null}
 
           <div>
             <span className="cv-field-label">Damaged Qty</span>
-            <QuantityField value={damagedQty} onChange={setDamagedQty} />
+            <QuantityField value={damagedQty} onChange={setDamagedQty} hideButtons />
           </div>
 
           <div>
             <span className="cv-field-label">Expired Qty</span>
-            <QuantityField value={expiredQty} onChange={setExpiredQty} />
+            <QuantityField value={expiredQty} onChange={setExpiredQty} hideButtons />
           </div>
 
           <div className="count-form-full">
@@ -394,6 +414,21 @@ export function CountInputForm({
           {loading ? "Submitting..." : pendingConfirm ? "Confirm Save" : "Submit Count"}
         </button>
       </div>
+
+      {binScanOpen ? (
+        <CameraScanner
+          onDetected={(code) => {
+            setBinScanOpen(false);
+            const scanned = code.trim();
+            if (!scanned) return;
+            if (!selectedBins.includes(scanned)) {
+              toggleBin(scanned);
+            }
+            setBinSearch("");
+          }}
+          onClose={() => setBinScanOpen(false)}
+        />
+      ) : null}
     </section>
   );
 }
